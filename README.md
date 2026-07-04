@@ -1,0 +1,93 @@
+# Agent FinOps
+
+<!-- vpeetla-tech-stack:start -->
+[![Python 3.11](https://img.shields.io/badge/Python-3.11-3776AB?style=flat-square)]() [![FastAPI](https://img.shields.io/badge/FastAPI-009688?style=flat-square)]() [![Vercel](https://img.shields.io/badge/Vercel-000000?style=flat-square)]() [![Render](https://img.shields.io/badge/Render-46E3B7?style=flat-square)]()
+<!-- vpeetla-tech-stack:end -->
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Portfolio](https://img.shields.io/badge/🌐_venkat--ai.com-Portfolio-5eead4?style=flat-square)](https://venkat-ai.com/work)
+
+**Real, enforced cost governance for AI agent fleets — usage metering, budgets, and breach signals as a shared service, not a seeded dashboard.**
+
+> Two other repos in this portfolio (`aegisai-enterprise-agent-platform`, `aegisloop-agentops-workbench`) shipped a "FinOps" module that computed cost from fabricated seed data, never real usage. This is the fix — as a standalone service, not duplicated logic in each.
+
+---
+
+## Why this exists
+
+Enterprise AI cost governance keeps failing the same way in 2026: teams build a dashboard *after* production traffic arrives, wire it to guessed or seeded numbers, and call it FinOps. Real governance needs three things in place *before* traffic arrives:
+
+1. **Real metering** — actual token counts from the provider's own response, not a character-count guess
+2. **A budget, per agent or per tenant** — not just a number to look at
+3. **Enforcement** — a budget breach has to *do* something (pause the agent, block the next call), not just render red
+
+This service is the shared ledger + budget check other agent platforms call into, instead of re-implementing pricing tables and cost math per repo.
+
+## 60-second overview
+
+```text
+Agent completes an LLM call → real (prompt_tokens, completion_tokens) from the provider response
+      → POST /v1/usage {scope, provider, model, tokens}
+      → real $ cost computed from one canonical pricing table
+      → running total compared against the scope's budget
+      → {total_cost_usd, budget_usd, breached} returned to the caller
+      → caller decides enforcement (AegisAI: kill-switch; AegisLoop: refuse further paid dispatch)
+```
+
+FinOps tells the truth about cost. Each consumer still owns what happens when a budget breaks — this service doesn't reach into another repo's control plane.
+
+## Implementation status (honest)
+
+| Component | Status | Notes |
+|-----------|--------|-------|
+| Real cost calculation | ✅ | `pricing.py` — real per-model $/1M-token table, non-zero fallback for unknown models |
+| Usage ledger | ✅ | SQLite (dev) / Postgres (prod via `AGENTFINOPS_DB_BACKEND=postgres`) |
+| Budget set + breach detection | ✅ | `PUT /v1/budget/{scope_type}/{scope_value}`, checked on every `POST /v1/usage` |
+| API-key gate on mutating routes | ✅ | Set `AGENTFINOPS_API_KEY` — unset in dev/demo |
+| Python SDK (`agent_finops_client`) | ✅ | Graceful local fallback when no service URL configured |
+| Consumers wired (AegisAI, AegisLoop) | 🟡 | Service built and tested standalone; consumer wiring is a tracked follow-up, not yet done |
+| Cross-repo budget totals (e.g. per-tenant across all platforms) | 🟡 | Schema supports it (`scope_type="tenant"`); no consumer sets tenant-scoped budgets yet |
+| Multi-provider pricing beyond OpenAI/Gemini/local | ❌ | Add to `pricing.RATES` as new providers get wired |
+
+## Quick start (local)
+
+```bash
+python3.11 -m venv .venv && source .venv/bin/activate
+pip install -e ".[dev]"
+pytest -q                                    # 22 tests, no network required
+
+uvicorn agent_finops.api.main:app --reload --port 8000
+# then, in another terminal:
+curl -X POST localhost:8000/v1/usage -H "Content-Type: application/json" -d \
+  '{"scope_type":"agent","scope_value":"demo","provider":"openai","model":"gpt-4o-mini","prompt_tokens":1000,"completion_tokens":200}'
+```
+
+## Using the SDK from another repo
+
+```python
+from agent_finops_client import FinOpsClient
+
+client = FinOpsClient(base_url="https://agent-finops.onrender.com", api_key=os.getenv("AGENTFINOPS_API_KEY"))
+result = client.record_usage(
+    scope_type="agent", scope_value="agent-requirements-analyst",
+    provider="openai", model="gpt-4.1-mini",
+    prompt_tokens=real_prompt_tokens, completion_tokens=real_completion_tokens,
+)
+if result.breached:
+    ...  # caller decides: kill-switch, refuse next call, alert — this service just tells the truth
+```
+
+If `base_url` is unset, `record_usage` computes cost locally from the same pricing table and
+returns `breached=False` — a consumer repo never hard-fails just because this service isn't
+deployed yet, matching the "fail open when not configured" convention used across this org.
+
+## Architecture
+
+See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) · [docs/PRODUCT.md](docs/PRODUCT.md) · [ADR-0001](docs/adr/0001-standalone-cost-governance-service.md)
+
+## Related
+
+- [ai-architecture-portfolio](https://github.com/vpeetla-ai/ai-architecture-portfolio) — org-wide ADRs and case studies
+- [aegisai-enterprise-agent-platform](https://github.com/vpeetla-ai/aegisai-enterprise-agent-platform) — governance control plane (fast-follow consumer)
+- [aegisloop-agentops-workbench](https://github.com/vpeetla-ai/aegisloop-agentops-workbench) — mission fleet runtime (fast-follow consumer)
+
+MIT License

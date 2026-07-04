@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: agent-finops-api
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+    envVars:
+      - key: AGENTFINOPS_API_KEY
+        sync: false
+      - key: AGENTFINOPS_DB_BACKEND
+        value: sqlite
+      - key: DATABASE_URL
+        sync: false
