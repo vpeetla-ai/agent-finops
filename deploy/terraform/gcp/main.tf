@@ -113,9 +113,18 @@ resource "google_secret_manager_secret" "api_key" {
   }
 }
 
+resource "random_password" "agentfinops_api_key" {
+  length  = 32
+  special = false
+}
+
 resource "google_secret_manager_secret_version" "api_key" {
-  secret      = google_secret_manager_secret.api_key.id
-  secret_data = var.agentfinops_api_key != "" ? var.agentfinops_api_key : "unset"
+  secret = google_secret_manager_secret.api_key.id
+  # A real generated key by default -- this service is invokable by allUsers
+  # at the IAM layer (see google_cloud_run_v2_service_iam_member.public_invoker
+  # below), so AGENTFINOPS_API_KEY is the only real gate; a placeholder
+  # string here would be a guessable "password."
+  secret_data = var.agentfinops_api_key != "" ? var.agentfinops_api_key : random_password.agentfinops_api_key.result
 }
 
 # --- Service account (least privilege) ------------------------------------
