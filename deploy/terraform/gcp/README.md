@@ -2,7 +2,7 @@
 
 A real, alternative deploy path to the Render PaaS in the root `render.yaml` — Cloud Run
 (scale-to-zero) + Cloud SQL (Postgres, smallest tier, no HA). See
-[docs/adr/0003-paas-vs-iac-deploy-tradeoffs.md](../../../docs/adr/0003-paas-vs-iac-deploy-tradeoffs.md)
+[docs/adr/0002-paas-vs-iac-deploy-tradeoffs.md](../../../docs/adr/0002-paas-vs-iac-deploy-tradeoffs.md)
 for when this earns its complexity over the PaaS path.
 
 **Cost while running:** Cloud Run itself is ≈$0 at low/demo traffic (pay-per-request,

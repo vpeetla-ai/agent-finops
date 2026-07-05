@@ -1,6 +1,6 @@
 # Real, running AWS/GCP infra — a genuine alternative to the Render/Vercel PaaS
 # path every other repo in this org uses, not a portfolio-only exercise. See
-# docs/adr/0003-paas-vs-iac-deploy-tradeoffs.md for when each earns its
+# docs/adr/0002-paas-vs-iac-deploy-tradeoffs.md for when each earns its
 # complexity. Lowest-cost configuration on purpose: Cloud Run scale-to-zero
 # (min_instance_count = 0) and Cloud SQL's smallest shared-core tier with no
 # HA replica. Intended to be stood up, verified, and torn down per session

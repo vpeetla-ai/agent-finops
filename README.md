@@ -44,9 +44,10 @@ FinOps tells the truth about cost. Each consumer still owns what happens when a 
 | Budget set + breach detection | ✅ | `PUT /v1/budget/{scope_type}/{scope_value}`, checked on every `POST /v1/usage` |
 | API-key gate on mutating routes | ✅ | Set `AGENTFINOPS_API_KEY` — unset in dev/demo |
 | Python SDK (`agent_finops_client`) | ✅ | Graceful local fallback when no service URL configured |
-| Consumers wired (AegisAI, AegisLoop) | 🟡 | Service built and tested standalone; consumer wiring is a tracked follow-up, not yet done |
+| Consumers wired (AegisAI, AegisLoop) | ✅ | Both call this service for real per-node/per-mission metering and halt real dispatch on breach — see [ai-architecture-portfolio ADR-011/012](https://github.com/vpeetla-ai/ai-architecture-portfolio/blob/main/adr/ADR-012-aegisloop-finops-metering.md) |
 | Cross-repo budget totals (e.g. per-tenant across all platforms) | 🟡 | Schema supports it (`scope_type="tenant"`); no consumer sets tenant-scoped budgets yet |
 | Multi-provider pricing beyond OpenAI/Gemini/local | ❌ | Add to `pricing.RATES` as new providers get wired |
+| Real GCP deploy path (Cloud Run + Cloud SQL) | ✅ | `deploy/terraform/gcp/` — verified with a real `terraform apply`/`destroy` cycle against a live GCP project (real budget breach detected against real Cloud SQL, then torn down). See [ADR-0002](docs/adr/0002-paas-vs-iac-deploy-tradeoffs.md) |
 
 ## Quick start (local)
 
