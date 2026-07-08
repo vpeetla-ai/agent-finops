@@ -18,11 +18,13 @@
   </head>
   <body>
     <h1>Agent FinOps</h1>
-    <p class="muted">Real usage metering + budget breach detection for AI agent fleets. Point this at a running <code>agent-finops</code> API.</p>
+    <p class="muted">Real usage metering + budget breach detection for AI agent fleets.</p>
+
+    <div id="architect-root"></div>
 
     <section>
       <label for="apiBase">API base URL</label>
-      <input id="apiBase" value="http://localhost:8000" />
+      <input id="apiBase" value="https://agent-finops.onrender.com" />
       <label for="apiKey">API key (only if the backend requires one)</label>
       <input id="apiKey" type="password" placeholder="X-API-Key" />
     </section>
@@ -40,6 +42,9 @@
       <pre id="output">Waiting...</pre>
     </section>
 
+    <link rel="stylesheet" href="architect-panel.css" />
+    <script src="architect-config.js"></script>
+    <script src="architect-panel.js"></script>
     <script>
       const $ = (id) => document.getElementById(id);
 

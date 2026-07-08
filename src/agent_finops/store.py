@@ -107,6 +107,17 @@ class SQLiteFinOpsStore:
         ).fetchone()
         return round(row[0], 8) if row else 0.0
 
+    def aggregate_ops(self) -> dict:
+        row = self._conn.execute(
+            "SELECT COUNT(*), COALESCE(SUM(cost_usd), 0) FROM usage_events"
+        ).fetchone()
+        budget_count = self._conn.execute("SELECT COUNT(*) FROM budgets").fetchone()
+        return {
+            "usage_events": int(row[0] or 0),
+            "total_cost_usd": round(float(row[1] or 0), 4),
+            "budgets_configured": int(budget_count[0] or 0),
+        }
+
 
 class PostgresFinOpsStore:
     """Same schema and queries as SQLiteFinOpsStore, over a Postgres connection."""
@@ -182,6 +193,18 @@ class PostgresFinOpsStore:
                 (scope_type, scope_value),
             ).fetchone()
         return round(row[0], 8) if row else 0.0
+
+    def aggregate_ops(self) -> dict:
+        with self._psycopg.connect(self.database_url) as conn:
+            row = conn.execute(
+                "SELECT COUNT(*), COALESCE(SUM(cost_usd), 0) FROM usage_events"
+            ).fetchone()
+            budget_count = conn.execute("SELECT COUNT(*) FROM budgets").fetchone()
+        return {
+            "usage_events": int(row[0] or 0),
+            "total_cost_usd": round(float(row[1] or 0), 4),
+            "budgets_configured": int(budget_count[0] or 0),
+        }
 
 
 def build_store() -> FinOpsStore:
