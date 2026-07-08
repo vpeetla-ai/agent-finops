@@ -7,7 +7,7 @@ description: >-
 
 # Governed AI Stack
 
-Read [CONTEXT.md](../../CONTEXT.md) for terms.
+Read [CONTEXT.md](../../../CONTEXT.md) for terms.
 
 ## Layer routing
 

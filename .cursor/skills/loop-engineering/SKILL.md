@@ -40,4 +40,4 @@ description: >-
 - `loop-engine-agent-platform/src/loop_engine/harness/`
 - `loops/support-intelligence.yaml`
 - ADR-001 in LoopForge repo
-- Karpathy overnight loops: skill `agents-that-run-for-days` · [docs/LOOPS.md](../../docs/LOOPS.md)
+- Karpathy overnight loops: skill `agents-that-run-for-days` · [docs/LOOPS.md](../../../docs/LOOPS.md)
