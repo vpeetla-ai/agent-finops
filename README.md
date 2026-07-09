@@ -10,6 +10,8 @@
 
 > Two other repos in this portfolio (`aegisai-enterprise-agent-platform`, `aegisloop-agentops-workbench`) shipped a "FinOps" module that computed cost from fabricated seed data, never real usage. This is the fix — as a standalone service, not duplicated logic in each.
 
+**Live demo (UI):** [agent-finops.vercel.app](https://agent-finops.vercel.app) · **API:** [agent-finops.onrender.com](https://agent-finops.onrender.com)
+
 ---
 
 ## Why this exists

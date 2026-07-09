@@ -4,48 +4,78 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Agent FinOps — Live Demo</title>
-    <style>
-      body { font-family: -apple-system, sans-serif; max-width: 720px; margin: 2rem auto; padding: 0 1rem; background: #0b0b0f; color: #e6e6ea; }
-      h1 { font-size: 1.4rem; }
-      .muted { color: #9a9aa5; font-size: 0.85rem; }
-      section { background: #16161d; border: 1px solid #2a2a35; border-radius: 12px; padding: 1.25rem; margin-top: 1rem; }
-      label { display: block; margin-top: 0.6rem; font-size: 0.85rem; }
-      input { width: 100%; padding: 0.5rem; margin-top: 0.25rem; border-radius: 6px; border: 1px solid #2a2a35; background: #0b0b0f; color: #e6e6ea; }
-      button { margin-top: 0.9rem; padding: 0.5rem 1rem; border-radius: 6px; border: none; background: #4f8cff; color: white; cursor: pointer; }
-      pre { white-space: pre-wrap; background: #0b0b0f; padding: 0.75rem; border-radius: 8px; font-size: 0.8rem; }
-      .breached { color: #ff6b6b; font-weight: 600; }
-    </style>
+    <link rel="stylesheet" href="architect-panel.css" />
+    <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
-    <h1>Agent FinOps</h1>
-    <p class="muted">Real usage metering + budget breach detection for AI agent fleets.</p>
+    <header class="app-header">
+      <div class="app-header__inner">
+        <a href="/" class="brand">
+          <div class="brand__mark">AF</div>
+          <div class="brand__text">
+            <p class="brand__eyebrow">Cost governance layer</p>
+            <p class="brand__title">Agent FinOps</p>
+          </div>
+        </a>
+        <div class="header-actions">
+          <span class="status-badge">Live API</span>
+          <a href="https://github.com/vpeetla-ai/agent-finops" class="btn-ghost" style="padding:0.4rem 0.75rem;font-size:0.8rem;text-decoration:none">GitHub</a>
+        </div>
+      </div>
+    </header>
 
-    <div id="workbench-product">
-      <label for="apiBase">API base URL</label>
-      <input id="apiBase" value="https://agent-finops.onrender.com" />
-      <label for="apiKey">API key (only if the backend requires one)</label>
-      <input id="apiKey" type="password" placeholder="X-API-Key" />
-    </section>
+    <main class="shell app-main">
+      <div class="page-hero">
+        <p class="eyebrow">Cost governance layer</p>
+        <h1>Agent FinOps</h1>
+        <p class="lede">Real token metering, per-agent budgets, and breach signals — shared ledger for VAP, AegisAI, and AegisLoop.</p>
+      </div>
 
-    <section>
-      <h2 style="font-size:1rem">Record usage</h2>
-      <label for="scopeValue">Scope (agent id)</label>
-      <input id="scopeValue" value="demo-agent" />
-      <label for="promptTokens">Prompt tokens</label>
-      <input id="promptTokens" type="number" value="1000" />
-      <label for="completionTokens">Completion tokens</label>
-      <input id="completionTokens" type="number" value="250" />
-      <button id="record">Record usage</button>
-      <button id="setBudget" style="background:#3a3a45">Set $1.00 budget</button>
-      <pre id="output">Waiting...</pre>
-    </section>
-    </div>
+      <div id="workbench-product">
+        <section class="panel">
+          <h2>Ops dashboard</h2>
+          <p class="muted">Live totals from <code>/v1/ops/metrics</code> on Render.</p>
+          <div id="opsCards" class="grid" style="grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 0.75rem; margin-top: 1rem"></div>
+        </section>
 
-    <link rel="stylesheet" href="architect-panel.css" />
+        <section class="panel">
+          <h2>API access</h2>
+          <label for="apiBase">API base URL</label>
+          <input id="apiBase" type="url" value="https://agent-finops.onrender.com" />
+          <label for="apiKey">API key (only if the backend requires one)</label>
+          <input id="apiKey" type="password" placeholder="X-API-Key" />
+          <p class="muted api-hint">API: <span id="apiUrl"></span></p>
+        </section>
+
+        <section class="panel">
+          <h2>Record usage</h2>
+          <p class="muted">POST real prompt/completion token counts — cost computed from the canonical pricing table.</p>
+          <label for="scopeValue">Scope (agent id)</label>
+          <input id="scopeValue" value="demo-agent" />
+          <label for="promptTokens">Prompt tokens</label>
+          <input id="promptTokens" type="number" value="1000" />
+          <label for="completionTokens">Completion tokens</label>
+          <input id="completionTokens" type="number" value="250" />
+          <div class="row row-actions">
+            <button id="record" type="button">Record usage</button>
+            <button id="setBudget" type="button" class="ghost">Set $1.00 budget</button>
+            <button id="checkBudget" type="button" class="ghost">Check budget</button>
+          </div>
+          <pre id="output" class="trace">Waiting…</pre>
+        </section>
+      </div>
+    </main>
+
+    <footer class="app-footer">Agent FinOps · <a href="https://github.com/vpeetla-ai/agent-finops">vpeetla-ai</a></footer>
+
+    <script src="config.js"></script>
     <script src="architect-config.js"></script>
     <script src="architect-panel.js"></script>
     <script>
       const $ = (id) => document.getElementById(id);
+      const apiDefault = window.AGENT_FINOPS_API || "https://agent-finops.onrender.com";
+      $("apiBase").value = apiDefault;
+      $("apiUrl").textContent = apiDefault;
 
       function headers() {
         const h = { "Content-Type": "application/json" };
@@ -54,8 +84,36 @@
         return h;
       }
 
+      function apiBase() {
+        return $("apiBase").value.replace(/\/$/, "");
+      }
+
+      function renderOps(data) {
+        const extra = data.extra || {};
+        const cards = [
+          ["Usage events", data.total_runs ?? "—"],
+          ["Total cost (USD)", extra.total_cost_usd != null ? "$" + Number(extra.total_cost_usd).toFixed(4) : "—"],
+          ["Budgets configured", data.active_entities ?? "—"],
+          ["Success rate", (data.success_rate_pct ?? "—") + (data.success_rate_pct != null ? "%" : "")],
+        ];
+        $("opsCards").innerHTML = cards
+          .map(
+            ([label, value]) =>
+              `<div class="panel" style="margin-top:0;padding:1rem"><p class="muted" style="margin:0;font-size:0.72rem;text-transform:uppercase">${label}</p><p style="margin:0.35rem 0 0;font-size:1.5rem;font-weight:600">${value}</p></div>`
+          )
+          .join("");
+      }
+
+      async function loadOps() {
+        try {
+          const res = await fetch(apiBase() + "/v1/ops/metrics", { cache: "no-store" });
+          if (res.ok) renderOps(await res.json());
+        } catch (_) {
+          $("opsCards").innerHTML = '<p class="muted">API waking from idle — retry in a moment.</p>';
+        }
+      }
+
       $("record").addEventListener("click", async () => {
-        const base = $("apiBase").value.replace(/\/$/, "");
         const body = {
           scope_type: "agent",
           scope_value: $("scopeValue").value,
@@ -65,22 +123,22 @@
           completion_tokens: Number($("completionTokens").value),
         };
         try {
-          const res = await fetch(`${base}/v1/usage`, { method: "POST", headers: headers(), body: JSON.stringify(body) });
+          const res = await fetch(`${apiBase()}/v1/usage`, { method: "POST", headers: headers(), body: JSON.stringify(body) });
           const data = await res.json();
           if (!res.ok) throw new Error(data.detail || `HTTP ${res.status}`);
           $("output").innerHTML = data.breached
-            ? `<span class="breached">BUDGET BREACHED</span>\n${JSON.stringify(data, null, 2)}`
+            ? `<span style="color:#dc2626;font-weight:600">BUDGET BREACHED</span>\n${JSON.stringify(data, null, 2)}`
             : JSON.stringify(data, null, 2);
+          loadOps();
         } catch (err) {
           $("output").textContent = "Error: " + err.message;
         }
       });
 
       $("setBudget").addEventListener("click", async () => {
-        const base = $("apiBase").value.replace(/\/$/, "");
         const scope = $("scopeValue").value;
         try {
-          const res = await fetch(`${base}/v1/budget/agent/${encodeURIComponent(scope)}`, {
+          const res = await fetch(`${apiBase()}/v1/budget/agent/${encodeURIComponent(scope)}`, {
             method: "PUT",
             headers: headers(),
             body: JSON.stringify({ budget_usd: 1.0 }),
@@ -88,10 +146,25 @@
           const data = await res.json();
           if (!res.ok) throw new Error(data.detail || `HTTP ${res.status}`);
           $("output").textContent = JSON.stringify(data, null, 2);
+          loadOps();
         } catch (err) {
           $("output").textContent = "Error: " + err.message;
         }
       });
+
+      $("checkBudget").addEventListener("click", async () => {
+        const scope = $("scopeValue").value;
+        try {
+          const res = await fetch(`${apiBase()}/v1/budget/agent/${encodeURIComponent(scope)}`);
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.detail || `HTTP ${res.status}`);
+          $("output").textContent = JSON.stringify(data, null, 2);
+        } catch (err) {
+          $("output").textContent = "Error: " + err.message;
+        }
+      });
+
+      loadOps();
     </script>
   </body>
 </html>
