@@ -13,3 +13,4 @@ node_modules/
 *.tfvars
 !*.tfvars.example
 crash.log
+.vercel
