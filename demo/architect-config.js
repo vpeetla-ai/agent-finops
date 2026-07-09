@@ -17,4 +17,12 @@ window.ARCHITECT_CONFIG = {
     { decision: "API key on mutating routes", gain: "Prevents usage spam", trade: "Demo needs key in prod" },
     { decision: "SQLite default for portfolio", gain: "Zero DB setup", trade: "Metrics reset on ephemeral disk" },
   ],
+  adrLinks: [
+    { title: "ADR-011 — Agent FinOps standalone service", href: "https://github.com/vpeetla-ai/ai-architecture-portfolio/blob/main/adr/ADR-011-agent-finops-standalone-service.md" },
+    { title: "ADR-0002 — PaaS vs IaC deploy tradeoffs", href: "https://github.com/vpeetla-ai/agent-finops/blob/main/docs/adr/0002-paas-vs-iac-deploy-tradeoffs.md" },
+  ],
+  docsLinks: [
+    { title: "Architecture", href: "https://github.com/vpeetla-ai/agent-finops/blob/main/docs/ARCHITECTURE.md" },
+    { title: "SLO targets", href: "https://github.com/vpeetla-ai/agent-finops/blob/main/docs/SLO.md" },
+  ],
 };
