@@ -41,7 +41,7 @@
         <section class="panel">
           <h2>API access</h2>
           <label for="apiBase">API base URL</label>
-          <input id="apiBase" type="url" value="https://agent-finops.onrender.com" />
+          <input id="apiBase" type="url" value="https://agent-finops-api.onrender.com" />
           <label for="apiKey">API key (only if the backend requires one)</label>
           <input id="apiKey" type="password" placeholder="X-API-Key" />
           <p class="muted api-hint">API: <span id="apiUrl"></span></p>
@@ -73,7 +73,7 @@
     <script src="architect-panel.js"></script>
     <script>
       const $ = (id) => document.getElementById(id);
-      const apiDefault = window.AGENT_FINOPS_API || "https://agent-finops.onrender.com";
+      const apiDefault = window.AGENT_FINOPS_API || "https://agent-finops-api.onrender.com";
       $("apiBase").value = apiDefault;
       $("apiUrl").textContent = apiDefault;
 

@@ -6,7 +6,7 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "https://agent-finops.onrender.com/:path*"
+      "destination": "https://agent-finops-api.onrender.com/:path*"
     }
   ]
 }

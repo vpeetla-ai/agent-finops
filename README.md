@@ -10,7 +10,7 @@
 
 > Two other repos in this portfolio (`aegisai-enterprise-agent-platform`, `aegisloop-agentops-workbench`) shipped a "FinOps" module that computed cost from fabricated seed data, never real usage. This is the fix — as a standalone service, not duplicated logic in each.
 
-**Live demo (UI):** [agent-finops.vercel.app](https://agent-finops.vercel.app) · **API:** [agent-finops.onrender.com](https://agent-finops.onrender.com)
+**Live demo (UI):** [agent-finops.vercel.app](https://agent-finops.vercel.app) · **API:** [agent-finops.onrender.com](https://agent-finops-api.onrender.com)
 
 ---
 
@@ -69,7 +69,7 @@ curl -X POST localhost:8000/v1/usage -H "Content-Type: application/json" -d \
 ```python
 from agent_finops_client import FinOpsClient
 
-client = FinOpsClient(base_url="https://agent-finops.onrender.com", api_key=os.getenv("AGENTFINOPS_API_KEY"))
+client = FinOpsClient(base_url="https://agent-finops-api.onrender.com", api_key=os.getenv("AGENTFINOPS_API_KEY"))
 result = client.record_usage(
     scope_type="agent", scope_value="agent-requirements-analyst",
     provider="openai", model="gpt-4.1-mini",

@@ -1,4 +1,4 @@
-window.AGENT_FINOPS_API = window.AGENT_FINOPS_API || "https://agent-finops.onrender.com";
+window.AGENT_FINOPS_API = window.AGENT_FINOPS_API || "https://agent-finops-api.onrender.com";
 window.ARCHITECT_CONFIG = {
   tagline:
     "Agent FinOps metering: record token usage, enforce budgets per agent/tenant, and halt dispatch on breach — cost governance as a first-class layer.",
