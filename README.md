@@ -10,7 +10,7 @@
 
 > Two other repos in this portfolio (`aegisai-enterprise-agent-platform`, `aegisloop-agentops-workbench`) shipped a "FinOps" module that computed cost from fabricated seed data, never real usage. This is the fix — as a standalone service, not duplicated logic in each.
 
-**Live demo (UI):** [agent-finops.vercel.app](https://agent-finops.vercel.app) · **API:** [agent-finops.onrender.com](https://agent-finops-api.onrender.com)
+**Live demo (UI):** [agent-finops.vercel.app](https://agent-finops.vercel.app) · **API:** [agent-finops-api.onrender.com](https://agent-finops-api.onrender.com)
 
 ---
 
@@ -90,7 +90,7 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) · [docs/PRODUCT.md](docs/PRODU
 ## Related
 
 - [ai-architecture-portfolio](https://github.com/vpeetla-ai/ai-architecture-portfolio) — org-wide ADRs and case studies
-- [aegisai-enterprise-agent-platform](https://github.com/vpeetla-ai/aegisai-enterprise-agent-platform) — governance control plane (fast-follow consumer)
-- [aegisloop-agentops-workbench](https://github.com/vpeetla-ai/aegisloop-agentops-workbench) — mission fleet runtime (fast-follow consumer)
+- [aegisai-enterprise-agent-platform](https://github.com/vpeetla-ai/aegisai-enterprise-agent-platform) — live consumer (Website Build agents halt on budget breach)
+- [aegisloop-agentops-workbench](https://github.com/vpeetla-ai/aegisloop-agentops-workbench) — live consumer (mission dispatch metering)
 
 MIT License
