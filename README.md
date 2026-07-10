@@ -87,6 +87,20 @@ deployed yet, matching the "fail open when not configured" convention used acros
 
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) · [docs/PRODUCT.md](docs/PRODUCT.md) · [ADR-0001](docs/adr/0001-standalone-cost-governance-service.md)
 
+## Interview map
+
+**Business function:** Shared FinOps service — usage metering, budgets, cost-breach signals for agent fleets.
+
+Staff+ prep crosswalk — [playbook](https://github.com/vpeetla-ai/ai-architect-interview-playbook) · [study UI](https://ai-architect-interview-playbook-9xs.vercel.app) · [Practice Arena](https://ai-architect-practice-arena.vercel.app) · [org matrix](https://github.com/vpeetla-ai/ai-architecture-portfolio/blob/main/docs/REPO_INTERVIEW_MAP.md). Only entries this repo honestly exercises.
+
+| Category | Entry | Fit |
+|----------|-------|-----|
+| Cloud | [Orchestration & cost optimization](https://ai-architect-interview-playbook-9xs.vercel.app/q/cloud-architecture/06-container-orchestration-and-cost-optimization-at-scale) ([md](https://github.com/vpeetla-ai/ai-architect-interview-playbook/blob/main/cloud-architecture/06-container-orchestration-and-cost-optimization-at-scale.md)) | Cost governance as a shared service |
+| System design | [Multi-tenant AI platform](https://ai-architect-interview-playbook-9xs.vercel.app/q/ai-system-design/09-multi-tenant-ai-platform-architecture) ([md](https://github.com/vpeetla-ai/ai-architect-interview-playbook/blob/main/ai-system-design/09-multi-tenant-ai-platform-architecture.md)) | Partial — per-tenant budgets / quotas |
+| Trade-offs | [Cost vs latency vs safety](https://ai-architect-interview-playbook-9xs.vercel.app/q/scalability-governance-tradeoffs/01-cost-vs-latency-vs-safety) ([md](https://github.com/vpeetla-ai/ai-architect-interview-playbook/blob/main/scalability-governance-tradeoffs/01-cost-vs-latency-vs-safety.md)) | Enforced budgets vs best-effort dashboards |
+| Trade-offs | [Build vs buy shared services](https://ai-architect-interview-playbook-9xs.vercel.app/q/scalability-governance-tradeoffs/02-build-vs-buy-shared-services) ([md](https://github.com/vpeetla-ai/ai-architect-interview-playbook/blob/main/scalability-governance-tradeoffs/02-build-vs-buy-shared-services.md)) | Why a dedicated metering service |
+| Behavioral | [FinOps audit and fix](https://ai-architect-interview-playbook-9xs.vercel.app/q/behavioral/02-finops-audit-and-fix) ([md](https://github.com/vpeetla-ai/ai-architect-interview-playbook/blob/main/behavioral/02-finops-audit-and-fix.md)) | Finding/fixing real FinOps gaps in-org |
+
 ## Related
 
 - [ai-architecture-portfolio](https://github.com/vpeetla-ai/ai-architecture-portfolio) — org-wide ADRs and case studies
