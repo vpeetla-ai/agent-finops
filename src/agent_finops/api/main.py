@@ -13,7 +13,7 @@ from pydantic import BaseModel
 
 from agent_finops.models import UsageEvent
 from agent_finops.pricing import estimate_cost_usd
-from agent_finops.store import build_store
+from agent_finops.store import build_store, cost_per_compliant_outcome, record_workflow_outcome
 
 app = FastAPI(title="Agent FinOps", version="0.1.0")
 app.add_middleware(
@@ -47,6 +47,17 @@ class RecordUsageRequest(BaseModel):
 
 class SetBudgetRequest(BaseModel):
     budget_usd: float
+
+
+class WorkflowOutcomeRequest(BaseModel):
+    workflow_id: str
+    tenant_id: str
+    eval_pass: bool = True
+    policy_deny: bool = False
+    hitl_required: bool = False
+    hitl_approved: bool = True
+    budget_ok: bool = True
+    total_cost_usd: float = 0.0
 
 
 @app.get("/v1/ops/metrics")
@@ -109,3 +120,38 @@ def get_budget(scope_type: str, scope_value: str) -> dict:
 def set_budget(scope_type: str, scope_value: str, body: SetBudgetRequest) -> dict:
     budget = store.set_budget(scope_type, scope_value, body.budget_usd)
     return {"scope_type": budget.scope_type, "scope_value": budget.scope_value, "budget_usd": budget.budget_usd}
+
+
+
+@app.post("/v1/outcomes", dependencies=[Depends(_require_api_key)])
+def record_outcome(body: WorkflowOutcomeRequest) -> dict:
+    """Record compliant-success bit for cost-per-compliant-outcome KPI (ADR-029)."""
+    compliant = (
+        body.eval_pass
+        and not body.policy_deny
+        and body.budget_ok
+        and ((not body.hitl_required) or body.hitl_approved)
+    )
+    row = {
+        "workflow_id": body.workflow_id,
+        "tenant_id": body.tenant_id,
+        "compliant_success": compliant,
+        "eval_pass": body.eval_pass,
+        "policy_deny": body.policy_deny,
+        "hitl_required": body.hitl_required,
+        "hitl_approved": body.hitl_approved,
+        "budget_ok": body.budget_ok,
+        "total_cost_usd": body.total_cost_usd,
+        "recorded_at": datetime.now(timezone.utc).isoformat(),
+    }
+    record_workflow_outcome(store, row)
+    return {**row, "compliant_success": compliant}
+
+
+@app.get("/v1/kpi/cost-per-compliant-outcome")
+def kpi_cost_per_compliant_outcome(tenant_id: str | None = None) -> dict:
+    return {
+        "service": "agent-finops",
+        "kpi": "cost_per_compliant_outcome",
+        **cost_per_compliant_outcome(store, tenant_id),
+    }

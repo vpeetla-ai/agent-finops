@@ -30,6 +30,20 @@ CREATE TABLE IF NOT EXISTS budgets (
     budget_usd REAL NOT NULL,
     PRIMARY KEY (scope_type, scope_value)
 );
+
+CREATE TABLE IF NOT EXISTS workflow_outcomes (
+    workflow_id TEXT PRIMARY KEY,
+    tenant_id TEXT NOT NULL,
+    compliant_success INTEGER NOT NULL,
+    eval_pass INTEGER NOT NULL,
+    policy_deny INTEGER NOT NULL,
+    hitl_required INTEGER NOT NULL,
+    hitl_approved INTEGER NOT NULL,
+    budget_ok INTEGER NOT NULL,
+    total_cost_usd REAL NOT NULL DEFAULT 0,
+    recorded_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS ix_outcomes_tenant ON workflow_outcomes (tenant_id);
 """
 
 
@@ -217,3 +231,69 @@ def build_store() -> FinOpsStore:
         return PostgresFinOpsStore(database_url)
     db_path = os.getenv("AGENTFINOPS_DB_PATH", ":memory:")
     return SQLiteFinOpsStore(db_path)
+
+
+# --- Outcome KPI (ADR-029) ---
+def _ensure_outcome_methods():
+    pass
+
+
+def record_workflow_outcome(store, row: dict) -> dict:
+    if not hasattr(store, "_conn"):
+        raise RuntimeError("workflow outcomes require SQLite store in v1")
+    store._conn.execute(
+        """INSERT INTO workflow_outcomes
+           (workflow_id, tenant_id, compliant_success, eval_pass, policy_deny,
+            hitl_required, hitl_approved, budget_ok, total_cost_usd, recorded_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+           ON CONFLICT(workflow_id) DO UPDATE SET
+             compliant_success=excluded.compliant_success,
+             eval_pass=excluded.eval_pass,
+             policy_deny=excluded.policy_deny,
+             hitl_required=excluded.hitl_required,
+             hitl_approved=excluded.hitl_approved,
+             budget_ok=excluded.budget_ok,
+             total_cost_usd=excluded.total_cost_usd,
+             recorded_at=excluded.recorded_at
+        """,
+        (
+            row["workflow_id"],
+            row["tenant_id"],
+            int(row["compliant_success"]),
+            int(row["eval_pass"]),
+            int(row["policy_deny"]),
+            int(row["hitl_required"]),
+            int(row["hitl_approved"]),
+            int(row["budget_ok"]),
+            float(row.get("total_cost_usd") or 0),
+            row["recorded_at"],
+        ),
+    )
+    store._conn.commit()
+    return row
+
+
+def cost_per_compliant_outcome(store, tenant_id: str | None = None) -> dict:
+    if not hasattr(store, "_conn"):
+        return {"tenant_id": tenant_id, "compliant_outcomes": 0, "total_cost_usd": 0.0, "cost_per_compliant_outcome": None}
+    if tenant_id:
+        cur = store._conn.execute(
+            """SELECT COUNT(*), COALESCE(SUM(total_cost_usd), 0)
+               FROM workflow_outcomes
+               WHERE tenant_id = ? AND compliant_success = 1""",
+            (tenant_id,),
+        )
+    else:
+        cur = store._conn.execute(
+            """SELECT COUNT(*), COALESCE(SUM(total_cost_usd), 0)
+               FROM workflow_outcomes WHERE compliant_success = 1"""
+        )
+    count, cost = cur.fetchone()
+    count = int(count or 0)
+    cost = float(cost or 0)
+    return {
+        "tenant_id": tenant_id,
+        "compliant_outcomes": count,
+        "total_cost_usd": cost,
+        "cost_per_compliant_outcome": (cost / count) if count else None,
+    }
