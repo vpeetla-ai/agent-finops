@@ -47,6 +47,7 @@ FinOps tells the truth about cost. Each consumer still owns what happens when a 
 | Real cost calculation | ✅ | `pricing.py` — real per-model $/1M-token table, non-zero fallback for unknown models |
 | Usage ledger | ✅ | SQLite (dev) / Postgres (prod via `AGENTFINOPS_DB_BACKEND=postgres`) |
 | Budget set + breach detection | ✅ | `PUT /v1/budget/{scope_type}/{scope_value}`, checked on every `POST /v1/usage` |
+| Glass-box workbench UX | ✅ | 3-column: architecture + live SLOs · budget→usage→breach step replay from real API fields · product |
 | API-key gate on mutating routes | ✅ | Set `AGENTFINOPS_API_KEY` — unset in dev/demo |
 | Python SDK (`agent_finops_client`) | ✅ | Graceful local fallback when no service URL configured |
 | Consumers wired (AegisAI, AegisLoop) | ✅ | Both call this service for real per-node/per-mission metering and halt real dispatch on breach — see [ai-architecture-portfolio ADR-011/012](https://github.com/vpeetla-ai/ai-architecture-portfolio/blob/main/adr/ADR-012-aegisloop-finops-metering.md) |

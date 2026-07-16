@@ -1,7 +1,7 @@
 window.AGENT_FINOPS_API = window.AGENT_FINOPS_API || "https://agent-finops-api.onrender.com";
 window.ARCHITECT_CONFIG = {
   tagline:
-    "Agent FinOps metering: record token usage, enforce budgets per agent/tenant, and halt dispatch on breach — cost governance as a first-class layer.",
+    "Glass-box FinOps: record token usage, enforce budgets per agent/tenant, and halt dispatch on breach — cost governance as a first-class layer.",
   metricsUrl: window.AGENT_FINOPS_API + "/v1/ops/metrics",
   metricsPath: "/v1/ops/metrics",
   metricLabels: { runs: "Usage events", entities: "Budgets configured", latency: "P95 latency" },

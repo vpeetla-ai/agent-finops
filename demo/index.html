@@ -3,9 +3,9 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Agent FinOps — Live Demo</title>
-    <link rel="stylesheet" href="architect-panel.css" />
-    <link rel="stylesheet" href="styles.css" />
+    <title>Agent FinOps — Glass-box Demo</title>
+    <link rel="stylesheet" href="architect-panel.css?v=2" />
+    <link rel="stylesheet" href="styles.css?v=2" />
   </head>
   <body>
     <header class="app-header">
@@ -24,201 +24,98 @@
       </div>
     </header>
 
-    <main class="shell app-main">
-      <div class="page-hero">
+    <main class="shell app-main gb-shell">
+      <div class="gb-hero">
         <p class="eyebrow">Cost governance layer</p>
-        <h1>Agent FinOps</h1>
-        <p class="lede">Real token metering, per-agent budgets, and breach signals — shared ledger for VAP, AegisAI, and AegisLoop.</p>
+        <h1>Agent FinOps — glass-box metering</h1>
+        <p class="lede">
+          Set a budget, record real token usage, and watch the ledger compare cost against the cap.
+          Architecture and live SLOs on the left · honest budget→usage→breach pipeline in the center · product on the right.
+        </p>
       </div>
 
-      <div id="workbench-product">
-        <section class="panel">
-          <h2>Prove budget breach</h2>
-          <p class="muted">One-click story: set a tiny budget → record usage until <strong>breached</strong> → callers must halt paid dispatch.</p>
-          <div class="row row-actions" style="margin-top:0.75rem">
-            <button id="triggerBreach" type="button">Trigger budget breach</button>
+      <div class="gb-workbench">
+        <aside id="gb-rail" class="gb-rail" aria-label="Architecture and metrics"></aside>
+
+        <section id="gb-center" class="gb-center" aria-label="FinOps pipeline glass-box">
+          <div class="gb-center-head">
+            <h2>FinOps pipeline · live step replay</h2>
+            <span id="gbSourceBadge" class="gb-source-badge">awaiting run</span>
           </div>
-          <pre id="output" class="trace">Waiting…</pre>
-        </section>
 
-        <section class="panel">
-          <h2>Ops dashboard</h2>
-          <p class="muted">Live totals from <code>/v1/ops/metrics</code> on Render.</p>
-          <div id="opsCards" class="grid" style="grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 0.75rem; margin-top: 1rem"></div>
-        </section>
-
-        <section class="panel">
-          <h2>Manual metering</h2>
-          <p class="muted">POST real prompt/completion token counts — cost from the canonical pricing table.</p>
-          <label for="scopeValue">Scope (agent id)</label>
-          <input id="scopeValue" value="demo-agent" />
-          <label for="promptTokens">Prompt tokens</label>
-          <input id="promptTokens" type="number" value="1000" />
-          <label for="completionTokens">Completion tokens</label>
-          <input id="completionTokens" type="number" value="250" />
-          <div class="row row-actions">
-            <button id="record" type="button">Record usage</button>
-            <button id="setBudget" type="button" class="ghost">Set $1.00 budget</button>
-            <button id="checkBudget" type="button" class="ghost">Check budget</button>
+          <div id="gbPipeline" class="gb-pipeline" aria-live="polite"></div>
+          <div class="gb-gate" id="gbGate">
+            Trigger a budget breach (or record usage) — center replay uses only fields returned by the API
+            (<code>cost_usd</code>, <code>total_cost_usd</code>, <code>budget_usd</code>, <code>breached</code>).
           </div>
+          <div id="gbEventLog" class="gb-event-log" aria-live="polite">
+            <div class="muted" style="font-style: italic">No steps yet — run a metering action to replay the pipeline.</div>
+          </div>
+          <div id="gbOpsStrip" class="gb-ops-strip">
+            <span><strong>steps</strong> —</span>
+            <span><strong>total</strong> n/a</span>
+            <span><strong>budget</strong> n/a</span>
+            <span><strong>breached</strong> —</span>
+          </div>
+
+          <div id="gbCostBars" class="gb-cost-bars" hidden></div>
         </section>
 
-        <details class="panel" style="padding:1rem 1.25rem">
-          <summary style="cursor:pointer;font-weight:600">Advanced — API access</summary>
-          <label for="apiBase">API base URL</label>
-          <input id="apiBase" type="url" value="https://agent-finops-api.onrender.com" />
-          <label for="apiKey">API key (only if the backend requires one)</label>
-          <input id="apiKey" type="password" placeholder="X-API-Key" />
-          <p class="muted api-hint">API: <span id="apiUrl"></span></p>
-        </details>
+        <aside id="workbench-product" class="gb-product" aria-label="FinOps product">
+          <p class="gb-guided">
+            <strong>1.</strong> Trigger budget breach (primary) → <strong>2.</strong> watch budget → usage → breach in the center →
+            <strong>3.</strong> inspect the ledger JSON below.
+          </p>
+
+          <section class="panel">
+            <h2>Prove budget breach</h2>
+            <p class="muted">One-click story: set a tiny budget → record usage until <strong>breached</strong> → callers must halt paid dispatch.</p>
+            <div class="gb-run-row">
+              <button id="triggerBreach" type="button" class="primary">Trigger budget breach</button>
+            </div>
+            <pre id="output" class="trace">Waiting…</pre>
+          </section>
+
+          <section class="panel">
+            <h2>Manual metering</h2>
+            <p class="muted">POST real prompt/completion token counts — cost from the canonical pricing table.</p>
+            <label for="scopeValue">Scope (agent id)</label>
+            <input id="scopeValue" value="demo-agent" />
+            <label for="promptTokens">Prompt tokens</label>
+            <input id="promptTokens" type="number" value="1000" />
+            <label for="completionTokens">Completion tokens</label>
+            <input id="completionTokens" type="number" value="250" />
+            <div class="row row-actions">
+              <button id="record" type="button">Record usage</button>
+              <button id="setBudget" type="button" class="ghost">Set $1.00 budget</button>
+              <button id="checkBudget" type="button" class="ghost">Check budget</button>
+            </div>
+          </section>
+
+          <section class="panel">
+            <h2>Ops snapshot</h2>
+            <p class="muted">Live totals from <code>/v1/ops/metrics</code> (also on the left rail).</p>
+            <div id="opsCards" class="gb-ops-cards"></div>
+          </section>
+
+          <details class="panel gb-advanced">
+            <summary>Advanced — API access</summary>
+            <label for="apiBase">API base URL</label>
+            <input id="apiBase" type="url" value="https://agent-finops-api.onrender.com" />
+            <label for="apiKey">API key (only if the backend requires one)</label>
+            <input id="apiKey" type="password" placeholder="X-API-Key" />
+            <p class="muted api-hint">API: <span id="apiUrl"></span></p>
+          </details>
+        </aside>
       </div>
     </main>
 
     <footer class="app-footer">Agent FinOps · <a href="https://github.com/vpeetla-ai/agent-finops">vpeetla-ai</a></footer>
 
     <script src="config.js"></script>
-    <script src="architect-config.js"></script>
-    <script src="architect-panel.js"></script>
-    <script>
-      const $ = (id) => document.getElementById(id);
-      const apiDefault = window.AGENT_FINOPS_API || "https://agent-finops-api.onrender.com";
-      $("apiBase").value = apiDefault;
-      $("apiUrl").textContent = apiDefault;
-
-      function headers() {
-        const h = { "Content-Type": "application/json" };
-        const key = $("apiKey").value.trim();
-        if (key) h["X-API-Key"] = key;
-        return h;
-      }
-
-      function apiBase() {
-        return $("apiBase").value.replace(/\/$/, "");
-      }
-
-      function renderOps(data) {
-        const extra = data.extra || {};
-        const cards = [
-          ["Usage events", data.total_runs ?? "—"],
-          ["Total cost (USD)", extra.total_cost_usd != null ? "$" + Number(extra.total_cost_usd).toFixed(4) : "—"],
-          ["Budgets configured", data.active_entities ?? "—"],
-          ["Success rate", (data.success_rate_pct ?? "—") + (data.success_rate_pct != null ? "%" : "")],
-        ];
-        $("opsCards").innerHTML = cards
-          .map(
-            ([label, value]) =>
-              `<div class="panel" style="margin-top:0;padding:1rem"><p class="muted" style="margin:0;font-size:0.72rem;text-transform:uppercase">${label}</p><p style="margin:0.35rem 0 0;font-size:1.5rem;font-weight:600">${value}</p></div>`
-          )
-          .join("");
-      }
-
-      async function loadOps() {
-        try {
-          const res = await fetch(apiBase() + "/v1/ops/metrics", { cache: "no-store" });
-          if (res.ok) renderOps(await res.json());
-        } catch (_) {
-          $("opsCards").innerHTML = '<p class="muted">API waking from idle — retry in a moment.</p>';
-        }
-      }
-
-      $("record").addEventListener("click", async () => {
-        const body = {
-          scope_type: "agent",
-          scope_value: $("scopeValue").value,
-          provider: "openai",
-          model: "gpt-4o-mini",
-          prompt_tokens: Number($("promptTokens").value),
-          completion_tokens: Number($("completionTokens").value),
-        };
-        try {
-          const res = await fetch(`${apiBase()}/v1/usage`, { method: "POST", headers: headers(), body: JSON.stringify(body) });
-          const data = await res.json();
-          if (!res.ok) throw new Error(data.detail || `HTTP ${res.status}`);
-          $("output").innerHTML = data.breached
-            ? `<span style="color:#dc2626;font-weight:600">BUDGET BREACHED</span>\n${JSON.stringify(data, null, 2)}`
-            : JSON.stringify(data, null, 2);
-          loadOps();
-        } catch (err) {
-          $("output").textContent = "Error: " + err.message;
-        }
-      });
-
-      $("setBudget").addEventListener("click", async () => {
-        const scope = $("scopeValue").value;
-        try {
-          const res = await fetch(`${apiBase()}/v1/budget/agent/${encodeURIComponent(scope)}`, {
-            method: "PUT",
-            headers: headers(),
-            body: JSON.stringify({ budget_usd: 1.0 }),
-          });
-          const data = await res.json();
-          if (!res.ok) throw new Error(data.detail || `HTTP ${res.status}`);
-          $("output").textContent = JSON.stringify(data, null, 2);
-          loadOps();
-        } catch (err) {
-          $("output").textContent = "Error: " + err.message;
-        }
-      });
-
-      $("checkBudget").addEventListener("click", async () => {
-        const scope = $("scopeValue").value;
-        try {
-          const res = await fetch(`${apiBase()}/v1/budget/agent/${encodeURIComponent(scope)}`);
-          const data = await res.json();
-          if (!res.ok) throw new Error(data.detail || `HTTP ${res.status}`);
-          $("output").textContent = JSON.stringify(data, null, 2);
-        } catch (err) {
-          $("output").textContent = "Error: " + err.message;
-        }
-      });
-
-      $("triggerBreach").addEventListener("click", async () => {
-        const scope = $("scopeValue").value || "demo-agent";
-        const log = [];
-        try {
-          $("output").textContent = "Setting $0.01 budget…";
-          let res = await fetch(`${apiBase()}/v1/budget/agent/${encodeURIComponent(scope)}`, {
-            method: "PUT",
-            headers: headers(),
-            body: JSON.stringify({ budget_usd: 0.01 }),
-          });
-          let data = await res.json();
-          if (!res.ok) throw new Error(data.detail || `HTTP ${res.status}`);
-          log.push("Budget set to $0.01");
-          for (let i = 1; i <= 8; i++) {
-            res = await fetch(`${apiBase()}/v1/usage`, {
-              method: "POST",
-              headers: headers(),
-              body: JSON.stringify({
-                scope_type: "agent",
-                scope_value: scope,
-                provider: "openai",
-                model: "gpt-4o-mini",
-                prompt_tokens: 4000,
-                completion_tokens: 1000,
-              }),
-            });
-            data = await res.json();
-            if (!res.ok) throw new Error(data.detail || `HTTP ${res.status}`);
-            log.push(`Usage #${i}: $${Number(data.total_cost_usd || 0).toFixed(4)} breached=${!!data.breached}`);
-            if (data.breached) {
-              $("output").innerHTML =
-                `<span style="color:#dc2626;font-weight:600">BUDGET BREACHED</span>\n` +
-                log.join("\n") +
-                "\n\n" +
-                JSON.stringify(data, null, 2);
-              loadOps();
-              return;
-            }
-          }
-          $("output").textContent = log.join("\n") + "\n\nNo breach yet — raise token counts and retry.";
-          loadOps();
-        } catch (err) {
-          $("output").textContent = "Error: " + err.message;
-        }
-      });
-
-      loadOps();
-    </script>
+    <script src="architect-config.js?v=2"></script>
+    <script src="architect-panel.js?v=2"></script>
+    <script src="glassbox.js?v=1"></script>
+    <script src="app.js?v=1"></script>
   </body>
 </html>
