@@ -3,7 +3,7 @@
 ## System context
 
 ```text
-Consumer repo (AegisAI, AegisLoop, ...)
+Consumer repo (AegisAI, AegisLoop, aegis-llm-gateway, OmniForge, …)
     │  real LLM call → real (prompt_tokens, completion_tokens) from provider response
     ▼
 agent_finops_client.FinOpsClient.record_usage(...)
@@ -19,6 +19,10 @@ Response back to consumer: {cost_usd, total_cost_usd, budget_usd, breached}
     │
     ▼
 Consumer decides enforcement (this service does not reach into another repo's control plane)
+
+Optional ADR-029 outcomes path:
+    POST /v1/outcomes → store compliant outcome flags
+    GET  /v1/kpi/cost-per-compliant-outcome?tenant_id=… → total_cost / compliant_count
 ```
 
 ## Data model
@@ -60,6 +64,7 @@ Consumer decides enforcement (this service does not reach into another repo's co
 
 | Layer | Repo |
 |-------|------|
-| Governance (fast-follow consumer) | [aegisai-enterprise-agent-platform](https://github.com/vpeetla-ai/aegisai-enterprise-agent-platform) |
-| AgentOps (fast-follow consumer) | [aegisloop-agentops-workbench](https://github.com/vpeetla-ai/aegisloop-agentops-workbench) |
-| Org ADRs | [ai-architecture-portfolio](https://github.com/vpeetla-ai/ai-architecture-portfolio) |
+| Governance (consumer + Control Room KPI) | [aegisai-enterprise-agent-platform](https://github.com/vpeetla-ai/aegisai-enterprise-agent-platform) |
+| AgentOps (consumer) | [aegisloop-agentops-workbench](https://github.com/vpeetla-ai/aegisloop-agentops-workbench) |
+| LLM gateway (meters usage) | [aegis-llm-gateway](https://github.com/vpeetla-ai/aegis-llm-gateway) |
+| Org ADRs | [ai-architecture-portfolio](https://github.com/vpeetla-ai/ai-architecture-portfolio) · [ADR-029](https://github.com/vpeetla-ai/ai-architecture-portfolio/blob/main/adr/ADR-029-app-owned-role-aware-routing-contract.md) |

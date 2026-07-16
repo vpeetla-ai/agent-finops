@@ -33,6 +33,9 @@ Agent completes an LLM call → real (prompt_tokens, completion_tokens) from the
       → running total compared against the scope's budget
       → {total_cost_usd, budget_usd, breached} returned to the caller
       → caller decides enforcement (AegisAI: kill-switch; AegisLoop: refuse further paid dispatch)
+
+Workflow completes (optional ADR-029) → POST /v1/outcomes {tenant, compliant flags}
+      → GET /v1/kpi/cost-per-compliant-outcome?tenant_id=…
 ```
 
 FinOps tells the truth about cost. Each consumer still owns what happens when a budget breaks — this service doesn't reach into another repo's control plane.
@@ -47,6 +50,7 @@ FinOps tells the truth about cost. Each consumer still owns what happens when a 
 | API-key gate on mutating routes | ✅ | Set `AGENTFINOPS_API_KEY` — unset in dev/demo |
 | Python SDK (`agent_finops_client`) | ✅ | Graceful local fallback when no service URL configured |
 | Consumers wired (AegisAI, AegisLoop) | ✅ | Both call this service for real per-node/per-mission metering and halt real dispatch on breach — see [ai-architecture-portfolio ADR-011/012](https://github.com/vpeetla-ai/ai-architecture-portfolio/blob/main/adr/ADR-012-aegisloop-finops-metering.md) |
+| Cost per compliant outcome (ADR-029) | ✅ | `POST /v1/outcomes` · `GET /v1/kpi/cost-per-compliant-outcome` · SDK helpers; AegisAI Control Room reads live when `AGENTFINOPS_API_URL` set |
 | Cross-repo budget totals (e.g. per-tenant across all platforms) | 🟡 | Schema supports it (`scope_type="tenant"`); no consumer sets tenant-scoped budgets yet |
 | Multi-provider pricing beyond OpenAI/Gemini/local | ❌ | Add to `pricing.RATES` as new providers get wired |
 | Real GCP deploy path (Cloud Run + Cloud SQL) | ✅ | `deploy/terraform/gcp/` — verified with a real `terraform apply`/`destroy` cycle against a live GCP project (real budget breach detected against real Cloud SQL, then torn down). See [ADR-0002](docs/adr/0002-paas-vs-iac-deploy-tradeoffs.md) |
@@ -104,8 +108,10 @@ Staff+ prep crosswalk — [playbook](https://github.com/vpeetla-ai/ai-architect-
 ## Related
 
 - [ai-architecture-portfolio](https://github.com/vpeetla-ai/ai-architecture-portfolio) — org-wide ADRs and case studies
-- [aegisai-enterprise-agent-platform](https://github.com/vpeetla-ai/aegisai-enterprise-agent-platform) — live consumer (Website Build agents halt on budget breach)
+- [aegisai-enterprise-agent-platform](https://github.com/vpeetla-ai/aegisai-enterprise-agent-platform) — live consumer (Website Build agents halt on budget breach; Control Room KPI)
 - [aegisloop-agentops-workbench](https://github.com/vpeetla-ai/aegisloop-agentops-workbench) — live consumer (mission dispatch metering)
+- [aegis-llm-gateway](https://github.com/vpeetla-ai/aegis-llm-gateway) — meters completions when `AGENTFINOPS_URL` set
+- [ADR-029](https://github.com/vpeetla-ai/ai-architecture-portfolio/blob/main/adr/ADR-029-app-owned-role-aware-routing-contract.md) — cost per compliant outcome
 
 MIT License
 
