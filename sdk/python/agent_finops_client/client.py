@@ -84,3 +84,64 @@ class FinOpsClient:
             budget_usd=data["budget_usd"],
             breached=data["breached"],
         )
+
+
+    def record_outcome(
+        self,
+        *,
+        workflow_id: str,
+        tenant_id: str,
+        eval_pass: bool = True,
+        policy_deny: bool = False,
+        hitl_required: bool = False,
+        hitl_approved: bool = True,
+        budget_ok: bool = True,
+        total_cost_usd: float = 0.0,
+    ) -> dict:
+        """ADR-029: record compliant-success bit for cost-per-compliant-outcome KPI."""
+        payload = {
+            "workflow_id": workflow_id,
+            "tenant_id": tenant_id,
+            "eval_pass": eval_pass,
+            "policy_deny": policy_deny,
+            "hitl_required": hitl_required,
+            "hitl_approved": hitl_approved,
+            "budget_ok": budget_ok,
+            "total_cost_usd": total_cost_usd,
+        }
+        if not self.base_url:
+            compliant = (
+                eval_pass
+                and not policy_deny
+                and budget_ok
+                and ((not hitl_required) or hitl_approved)
+            )
+            return {**payload, "compliant_success": compliant, "offline": True}
+        headers = {"Content-Type": "application/json"}
+        if self.api_key:
+            headers["X-API-Key"] = self.api_key
+        with httpx.Client(timeout=self.timeout_seconds) as client:
+            response = client.post(
+                f"{self.base_url}/v1/outcomes", json=payload, headers=headers
+            )
+            response.raise_for_status()
+            return response.json()
+
+    def get_cost_per_compliant_outcome(self, tenant_id: str | None = None) -> dict:
+        if not self.base_url:
+            return {
+                "kpi": "cost_per_compliant_outcome",
+                "tenant_id": tenant_id,
+                "compliant_outcomes": 0,
+                "total_cost_usd": 0.0,
+                "cost_per_compliant_outcome": None,
+                "offline": True,
+            }
+        params = {"tenant_id": tenant_id} if tenant_id else None
+        with httpx.Client(timeout=self.timeout_seconds) as client:
+            response = client.get(
+                f"{self.base_url}/v1/kpi/cost-per-compliant-outcome",
+                params=params,
+            )
+            response.raise_for_status()
+            return response.json()

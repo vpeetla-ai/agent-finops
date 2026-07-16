@@ -108,3 +108,13 @@ Staff+ prep crosswalk — [playbook](https://github.com/vpeetla-ai/ai-architect-
 - [aegisloop-agentops-workbench](https://github.com/vpeetla-ai/aegisloop-agentops-workbench) — live consumer (mission dispatch metering)
 
 MIT License
+
+## Cost per compliant outcome (ADR-029)
+
+```bash
+POST /v1/outcomes
+GET  /v1/kpi/cost-per-compliant-outcome?tenant_id=omniforge
+```
+
+SDK: `FinOpsClient.record_outcome(...)` / `get_cost_per_compliant_outcome(...)`.
+Compliant = eval pass + no policy deny + HITL approved when required + budget OK.
