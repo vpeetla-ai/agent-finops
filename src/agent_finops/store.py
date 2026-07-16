@@ -234,61 +234,103 @@ def build_store() -> FinOpsStore:
 
 
 # --- Outcome KPI (ADR-029) ---
-def _ensure_outcome_methods():
-    pass
+
+_OUTCOME_INSERT_SQLITE = """
+INSERT INTO workflow_outcomes
+  (workflow_id, tenant_id, compliant_success, eval_pass, policy_deny,
+   hitl_required, hitl_approved, budget_ok, total_cost_usd, recorded_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+ON CONFLICT(workflow_id) DO UPDATE SET
+  compliant_success=excluded.compliant_success,
+  eval_pass=excluded.eval_pass,
+  policy_deny=excluded.policy_deny,
+  hitl_required=excluded.hitl_required,
+  hitl_approved=excluded.hitl_approved,
+  budget_ok=excluded.budget_ok,
+  total_cost_usd=excluded.total_cost_usd,
+  recorded_at=excluded.recorded_at
+"""
+
+_OUTCOME_INSERT_PG = """
+INSERT INTO workflow_outcomes
+  (workflow_id, tenant_id, compliant_success, eval_pass, policy_deny,
+   hitl_required, hitl_approved, budget_ok, total_cost_usd, recorded_at)
+VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+ON CONFLICT(workflow_id) DO UPDATE SET
+  compliant_success=EXCLUDED.compliant_success,
+  eval_pass=EXCLUDED.eval_pass,
+  policy_deny=EXCLUDED.policy_deny,
+  hitl_required=EXCLUDED.hitl_required,
+  hitl_approved=EXCLUDED.hitl_approved,
+  budget_ok=EXCLUDED.budget_ok,
+  total_cost_usd=EXCLUDED.total_cost_usd,
+  recorded_at=EXCLUDED.recorded_at
+"""
 
 
 def record_workflow_outcome(store, row: dict) -> dict:
-    if not hasattr(store, "_conn"):
-        raise RuntimeError("workflow outcomes require SQLite store in v1")
-    store._conn.execute(
-        """INSERT INTO workflow_outcomes
-           (workflow_id, tenant_id, compliant_success, eval_pass, policy_deny,
-            hitl_required, hitl_approved, budget_ok, total_cost_usd, recorded_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-           ON CONFLICT(workflow_id) DO UPDATE SET
-             compliant_success=excluded.compliant_success,
-             eval_pass=excluded.eval_pass,
-             policy_deny=excluded.policy_deny,
-             hitl_required=excluded.hitl_required,
-             hitl_approved=excluded.hitl_approved,
-             budget_ok=excluded.budget_ok,
-             total_cost_usd=excluded.total_cost_usd,
-             recorded_at=excluded.recorded_at
-        """,
-        (
-            row["workflow_id"],
-            row["tenant_id"],
-            int(row["compliant_success"]),
-            int(row["eval_pass"]),
-            int(row["policy_deny"]),
-            int(row["hitl_required"]),
-            int(row["hitl_approved"]),
-            int(row["budget_ok"]),
-            float(row.get("total_cost_usd") or 0),
-            row["recorded_at"],
-        ),
+    params = (
+        row["workflow_id"],
+        row["tenant_id"],
+        int(row["compliant_success"]),
+        int(row["eval_pass"]),
+        int(row["policy_deny"]),
+        int(row["hitl_required"]),
+        int(row["hitl_approved"]),
+        int(row["budget_ok"]),
+        float(row.get("total_cost_usd") or 0),
+        row["recorded_at"],
     )
-    store._conn.commit()
-    return row
+    if hasattr(store, "_conn"):
+        store._conn.execute(_OUTCOME_INSERT_SQLITE, params)
+        store._conn.commit()
+        return row
+    if hasattr(store, "database_url"):
+        with store._psycopg.connect(store.database_url) as conn:
+            conn.execute(_OUTCOME_INSERT_PG, params)
+            conn.commit()
+        return row
+    raise RuntimeError("unsupported finops store for workflow outcomes")
 
 
 def cost_per_compliant_outcome(store, tenant_id: str | None = None) -> dict:
-    if not hasattr(store, "_conn"):
-        return {"tenant_id": tenant_id, "compliant_outcomes": 0, "total_cost_usd": 0.0, "cost_per_compliant_outcome": None}
-    if tenant_id:
-        cur = store._conn.execute(
-            """SELECT COUNT(*), COALESCE(SUM(total_cost_usd), 0)
-               FROM workflow_outcomes
-               WHERE tenant_id = ? AND compliant_success = 1""",
-            (tenant_id,),
-        )
+    empty = {
+        "tenant_id": tenant_id,
+        "compliant_outcomes": 0,
+        "total_cost_usd": 0.0,
+        "cost_per_compliant_outcome": None,
+    }
+    if hasattr(store, "_conn"):
+        if tenant_id:
+            cur = store._conn.execute(
+                """SELECT COUNT(*), COALESCE(SUM(total_cost_usd), 0)
+                   FROM workflow_outcomes
+                   WHERE tenant_id = ? AND compliant_success = 1""",
+                (tenant_id,),
+            )
+        else:
+            cur = store._conn.execute(
+                """SELECT COUNT(*), COALESCE(SUM(total_cost_usd), 0)
+                   FROM workflow_outcomes WHERE compliant_success = 1"""
+            )
+        count, cost = cur.fetchone()
+    elif hasattr(store, "database_url"):
+        with store._psycopg.connect(store.database_url) as conn:
+            if tenant_id:
+                row = conn.execute(
+                    """SELECT COUNT(*), COALESCE(SUM(total_cost_usd), 0)
+                       FROM workflow_outcomes
+                       WHERE tenant_id = %s AND compliant_success = 1""",
+                    (tenant_id,),
+                ).fetchone()
+            else:
+                row = conn.execute(
+                    """SELECT COUNT(*), COALESCE(SUM(total_cost_usd), 0)
+                       FROM workflow_outcomes WHERE compliant_success = 1"""
+                ).fetchone()
+        count, cost = row
     else:
-        cur = store._conn.execute(
-            """SELECT COUNT(*), COALESCE(SUM(total_cost_usd), 0)
-               FROM workflow_outcomes WHERE compliant_success = 1"""
-        )
-    count, cost = cur.fetchone()
+        return empty
     count = int(count or 0)
     cost = float(cost or 0)
     return {
