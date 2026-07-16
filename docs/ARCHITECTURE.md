@@ -58,7 +58,14 @@ Optional ADR-029 outcomes path:
 |-----------|-------|-------------|
 | API | FastAPI :8000 | Render (Docker) |
 | Database | SQLite `:memory:` | Postgres (`AGENTFINOPS_DB_BACKEND=postgres`) |
-| Demo UI | `demo/index.html` | Vercel static |
+| Demo UI | `demo/index.html` | Vercel static — three-column glass-box (arch/SLOs · budget→usage→breach replay · product) |
+
+## Glass-box demo honesty
+
+The center column replays metering steps built only from live API response fields
+(`cost_usd`, `total_cost_usd`, `budget_usd`, `breached`). There is no per-stage
+latency trace in the API; phases are the real call sequence (set budget → price →
+record → compare → breach), not invented timings.
 
 ## Related repos
 
