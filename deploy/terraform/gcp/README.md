@@ -16,6 +16,7 @@ Cloud SQL instance) when not actively verifying, not left running 24/7.
   raw credentials)
 - A GCP project with billing enabled; `gcloud config set project <PROJECT_ID>`
 - `terraform`, `gcloud`, `docker` installed locally
+- **Budget alert** on the project (≥$5 anomalous) before first apply — Cloud SQL is the burn risk
 
 ## Deploy
 
@@ -39,10 +40,28 @@ terraform apply -var="project_id=<PROJECT_ID>" -var="region=<REGION>"
 ```bash
 SERVICE_URL=$(terraform output -raw service_url)
 curl -s "$SERVICE_URL/health"
+# Optional meter smoke (redact API key from logs):
+# curl -sS -X POST "$SERVICE_URL/v1/usage" -H "X-API-Key: $KEY" -H 'Content-Type: application/json' \
+#   -d '{"scope_type":"agent","scope_value":"receipt","provider":"openai","model":"gpt-4o-mini","prompt_tokens":10,"completion_tokens":5}'
 ```
+
+## Capture receipt (no apply/destroy)
+
+```bash
+./scripts/capture_receipt.sh
+# → ~/ai-architecture-portfolio/docs/artifacts/gcp-receipts/YYYYMMDD-finops-gcp-receipt.md
+```
+
+Portfolio checklist: [P2_GCP_RECEIPT_RUNBOOK](https://github.com/vpeetla-ai/ai-architecture-portfolio/blob/main/docs/P2_GCP_RECEIPT_RUNBOOK.md).  
+Prefer **ERAG Cloud Run only** (no SQL) when you need ~$0 idle — see `enterprise_rag_platform/deploy/gcp/cloudrun`.
 
 ## Tear down
 
 ```bash
+# Same calendar day — Cloud SQL left up breaks a ~$45 ceiling
 terraform destroy -var="project_id=<PROJECT_ID>" -var="region=<REGION>"
+
+# If destroy blocked: stop Cloud SQL instance in console, then retry destroy
 ```
+
+**Do not** leave Cloud SQL running overnight for a portfolio receipt.
