@@ -4,59 +4,37 @@
 
 Accepted — 2026-07-05
 
+## In one breath (panel)
+
+I'd keep Render for day-to-day and prove Cloud Run + Cloud SQL with apply → real breach against a real ledger → destroy — IaC for IAM/network control, not as a second always-on prod.
+
 ## Context
 
-Every repo in this org deploys to Render/Vercel PaaS ([ADR-005 in ai-architecture-portfolio](https://github.com/vpeetla-ai/ai-architecture-portfolio/blob/main/adr/ADR-005-reference-stack-free-tier.md)),
-which is the right default for iteration speed and near-zero ops overhead — but it left the
-whole org with zero evidence of real cloud infrastructure ownership (VPC design, container
-orchestration, IAM, managed database provisioning), despite that being core Principal AI
-Architect / MLOps territory. Phase C of the top-1% AI Architect program closes that gap with
-genuinely operated infra, not just Terraform-on-paper.
+Org default is Render/Vercel ([portfolio ADR-005](https://github.com/vpeetla-ai/ai-architecture-portfolio/blob/main/adr/ADR-005-reference-stack-free-tier.md)). Right for speed; left zero *operated* GCP evidence (IAM, managed DB, Artifact Registry, Secret Manager).
+
+What I refused: claiming free-tier Render meets enterprise availability SLOs, or leaving Terraform as paper-only.
 
 ## Decision
 
-Added `deploy/terraform/gcp/`: Cloud Run (scale-to-zero) + Cloud SQL (Postgres, `db-f1-micro`,
-no HA) + Artifact Registry + Secret Manager + a least-privilege runtime service account — a
-real, alternative deploy path to `render.yaml`, not a replacement for it.
+Added `deploy/terraform/gcp/`: Cloud Run (scale-to-zero) + Cloud SQL (`db-f1-micro`, no HA) + Artifact Registry + Secret Manager + least-privilege runtime SA. Alternative to `render.yaml`, not a replacement.
 
-**When Render/Vercel PaaS is the right call:** fast iteration on a portfolio-stage service, no
-dedicated ops capacity, traffic low enough that PaaS free/starter tiers cover it, and the team
-doesn't need direct control over networking or IAM boundaries. This describes every repo in
-this org today, including this one in its normal operating mode.
-
-**When Terraform + Cloud Run/Cloud SQL earns its complexity:** when you need direct control
-over IAM (least-privilege service accounts scoped per resource, not a shared platform
-identity), network boundaries (VPC peering, private connectivity to other cloud resources), or
-provider-specific managed services PaaS doesn't expose (Secret Manager rotation, Cloud SQL
-IAM auth, VPC Service Controls). None of that was needed here — this was built specifically to
-gain and demonstrate that operational capability, not because agent-finops's traffic or ops
-needs outgrew Render.
+**PaaS wins** for portfolio-stage traffic and iteration. **Terraform earns it** when you need scoped IAM, private connectivity, or provider controls PaaS hides. Built to demonstrate that capability — traffic did not force the move.
 
 ## Consequences
 
 ### Positive
-- Real, verified deploy: `terraform apply` created 19 real GCP resources, the live service
-  correctly recorded usage and detected a budget breach against a real Cloud SQL-backed ledger,
-  and `terraform destroy` cleanly removed all 19 — a genuine stand-up/verify/tear-down cycle,
-  not a one-way demo.
-- Found and fixed two real bugs only real deployment could surface: the Dockerfile didn't
-  respect Cloud Run's injected `PORT` env var (now `${PORT:-8000}`), and the API key secret
-  defaulted to the guessable placeholder string `"unset"` for a service whose Cloud Run IAM
-  invoker is `allUsers` — now a real generated `random_password`.
-- Documents a genuine engineering trade-off (when to reach for IaC vs. PaaS) rather than
-  reflexively treating "more infrastructure" as inherently better.
+
+- Verified: 19 GCP resources, real usage + budget breach on Cloud SQL-backed ledger, clean destroy
+- Deploy-only bugs fixed: `PORT` binding for Cloud Run; API key no longer default `"unset"` on `allUsers` invoker
+- Trade-off documented — more infra ≠ automatically better
 
 ### Negative
-- Real, if temporary, cloud spend: Cloud SQL's `db-f1-micro` tier costs roughly $7–10/month
-  while running. Mitigated by the stand-up/verify/tear-down operating model — this is not left
-  running as a second production deployment of agent-finops.
-- Cloud Run doesn't automatically roll a new revision when a referenced Secret Manager
-  "latest" version changes underneath an otherwise-unchanged service spec — required an
-  explicit `terraform apply -replace` to pick up the rotated API key. A real operational
-  gotcha, not a design flaw in this Terraform, but worth remembering for any future secret
-  rotation against this same stack.
+
+- Temporary Cloud SQL spend (~$7–10/mo while up) — stand-up/verify/tear-down, not a second permanent prod
+- Secret "latest" rotation doesn't auto-roll Cloud Run — needed explicit replace; operational gotcha, not a design flex
 
 ## References
-- `deploy/terraform/gcp/` (main.tf, variables.tf, outputs.tf, README.md)
-- `render.yaml` (the PaaS path this doesn't replace)
+
+- `deploy/terraform/gcp/`
+- `render.yaml`
 - [ai-architecture-portfolio ADR-015](https://github.com/vpeetla-ai/ai-architecture-portfolio/blob/main/adr/ADR-015-real-aws-gcp-infra-phase-c.md)

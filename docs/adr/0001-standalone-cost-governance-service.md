@@ -4,66 +4,43 @@
 
 Accepted — 2026-07-04
 
+## In one breath (panel)
+
+I'd put cost truth in one shared ledger service and let each control plane enforce — embedding fake FinOps in every repo is how seeded dashboards become "governance."
+
 ## Context
 
-An org-wide security/architecture audit found `aegisai-enterprise-agent-platform`'s and
-`aegisloop-agentops-workbench`'s FinOps modules both compute cost from fabricated data: AegisAI's
-`RegisteredAgent.monthly_cost_usd` is a static seed value that never updates from real usage;
-AegisLoop's `estimate_mission_cost` guesses tokens from output character count even when a real,
-metered API call is made. Both discard the real `usage`/`usageMetadata` field their own provider
-responses already carry.
+Org audit: AegisAI's `monthly_cost_usd` was static seed; AegisLoop's `estimate_mission_cost` guessed tokens from character count even after a metered API call. Both discarded real `usage` / `usageMetadata`.
 
-The initial proposal was to fix this by adding pricing/budget/enforcement logic directly inside
-each of the two repos. That would have worked, but it duplicates pricing tables and budget math
-in every consumer, and doesn't help the three *other* repos in this portfolio that also make real
-LLM calls with no FinOps at all (VAP, Content Factory, Sentinel Brief).
+Initial pitch: patch pricing into each repo. That duplicates rate tables, drifts, and leaves VAP / Content Factory / Sentinel Brief still blind.
+
+What I refused: N copies of "FinOps" that never see provider tokens.
 
 ## Decision
 
-Build this as a standalone repo and service — consistent with how every other capability in this
-org is its own single-purpose repo (VAP = orchestration, AegisAI = governance, Enterprise RAG =
-knowledge, AegisLoop = fleet ops). Mirrors AegisAI's own `sdk/python/aegisai_gateway` + service
-split, the org's established "shared capability + thin client" pattern:
+Standalone service — same single-purpose pattern as VAP / AegisAI / RAG / AegisLoop:
 
-1. A FastAPI service with its own ledger (SQLite dev / Postgres prod) — real usage events in,
-   real running totals and budget-breach signals out.
-2. A thin Python SDK (`agent_finops_client`) other repos import, with graceful local-fallback
-   when the service isn't configured — a consumer never hard-fails on this being unavailable.
-3. **This service reports cost truth; it does not enforce.** AegisAI's kill-switch and
-   AegisLoop's dispatch-refusal are each consumer's own job — this service doesn't reach into
-   another repo's control plane, matching the org's existing separation of orchestration vs.
-   governance (see `ai-architecture-portfolio` ADR-001).
+1. FastAPI + ledger (SQLite dev / Postgres prod) — usage in, totals + breach signals out.
+2. Thin SDK (`agent_finops_client`) with local fallback when unset — consumers don't hard-fail if FinOps isn't wired.
+3. **This service reports cost truth; it does not enforce.** Kill-switch / dispatch refusal stay in the consumer (orchestration vs governance split — portfolio ADR-001).
 
-Consumer wiring (AegisAI, AegisLoop) is deliberately staged as a follow-up, not done in this
-initial build — proving the service works standalone first avoids a shallow, half-wired result
-across three repos in one pass.
+Consumer wiring staged as follow-up (done later for AegisAI Website Build and AegisLoop) — prove the service alone first.
 
 ## Consequences
 
 ### Positive
-- One canonical pricing table instead of N per-repo copies that drift independently.
-- Real cross-repo/cross-tenant budget totals become possible (schema already supports
-  `scope_type="tenant"`), which per-repo FinOps modules could never provide.
-- Any future repo with real LLM calls gets FinOps for the cost of one HTTP client call, not a
-  re-implementation.
+
+- One pricing table
+- Cross-repo / tenant budgets become possible (`scope_type="tenant"`) — schema ready; consumers may not set tenant scopes yet
+- Next LLM-calling repo gets FinOps via one HTTP client, not a rewrite
 
 ### Negative
-- A new service to deploy and keep available — the SDK's local-fallback mode exists specifically
-  to make this non-fatal if it's down or not yet wired.
-- Consumer wiring (the part that actually fixes AegisAI's and AegisLoop's fake dashboards) is not
-  done in this repo — it's a tracked follow-up in each consumer repo and in
-  `ai-architecture-portfolio/docs/ORG_IMPROVEMENT_PLAN_2026.md`.
 
-### Follow-ups
-- Wire `aegisai-enterprise-agent-platform`'s `WebsiteBuildOrchestrator` (5 agents already map to
-  existing registry entries) as the first real consumer, with budget breach wired to the
-  existing, real `KillSwitchService`.
-- Wire `aegisloop-agentops-workbench`'s mission runtime as the second consumer.
-- Consider splitting `agent_finops_client` into its own lightweight package (no FastAPI/uvicorn
-  dependency) if a consumer wants a thinner install footprint.
+- Another service to deploy — SDK fallback makes absence non-fatal
+- Enforcement lives in consumers — this ADR alone doesn't green their dashboards
 
 ## References
+
 - `src/agent_finops/pricing.py`, `store.py`, `api/main.py`
 - `sdk/python/agent_finops_client/client.py`
-- Org pattern precedent: [aegisai-enterprise-agent-platform `sdk/python/aegisai_gateway`](https://github.com/vpeetla-ai/aegisai-enterprise-agent-platform/tree/main/sdk/python)
-- [ai-architecture-portfolio ORG_IMPROVEMENT_PLAN_2026.md](https://github.com/vpeetla-ai/ai-architecture-portfolio/blob/main/docs/ORG_IMPROVEMENT_PLAN_2026.md) (Phase 6 backlog item)
+- [ai-architecture-portfolio ADR-011](https://github.com/vpeetla-ai/ai-architecture-portfolio/blob/main/adr/ADR-011-agent-finops-standalone-service.md)
