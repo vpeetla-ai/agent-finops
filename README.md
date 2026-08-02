@@ -53,6 +53,7 @@ FinOps tells the truth about cost. Each consumer still owns what happens when a 
 | Consumers wired (AegisAI, AegisLoop) | ✅ | Both call this service for real per-node/per-mission metering and halt real dispatch on breach — see [ai-architecture-portfolio ADR-011/012](https://github.com/vpeetla-ai/ai-architecture-portfolio/blob/main/adr/ADR-012-aegisloop-finops-metering.md) |
 | Cost per compliant outcome (ADR-029) | ✅ | `POST /v1/outcomes` · `GET /v1/kpi/cost-per-compliant-outcome` · SDK helpers; AegisAI Control Room reads live when `AGENTFINOPS_API_URL` set |
 | Public ops metrics honesty | ✅ | `GET /v1/ops/metrics` exposes store backend + mutation auth posture; enforcement stays caller-owned |
+| Observability status | ✅ | `GET /v1/observability/status` — meter vs enforce separation (caller-owned) |
 | Cross-repo budget totals (e.g. per-tenant across all platforms) | 🟡 | Schema supports it (`scope_type="tenant"`); no consumer sets tenant-scoped budgets yet |
 | Multi-provider pricing beyond OpenAI/Gemini/local | ❌ | Add to `pricing.RATES` as new providers get wired |
 | Real GCP deploy path (Cloud Run + Cloud SQL) | ✅ | `deploy/terraform/gcp/` — verified with a real `terraform apply`/`destroy` cycle against a live GCP project (real budget breach detected against real Cloud SQL, then torn down). See [ADR-0002](docs/adr/0002-paas-vs-iac-deploy-tradeoffs.md) |

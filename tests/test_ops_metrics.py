@@ -26,3 +26,16 @@ def test_health_exposes_store_backend():
     body = resp.json()
     assert body["status"] == "ok"
     assert "store_backend" in body
+
+
+def test_observability_status_meter_vs_enforce():
+    client = TestClient(app)
+    resp = client.get("/v1/observability/status")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert "source_of_truth" in body
+    assert body["planes"]["enforcement"] == "caller_owned"
+    assert "store_backend" in body["planes"]
+    names = {e["name"] for e in body["exporters"]}
+    assert "OpsMetrics" in names
+    assert "enforce" in body["recommendation"].lower() or "caller" in body["recommendation"].lower()
