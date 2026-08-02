@@ -82,6 +82,33 @@ def ops_metrics() -> dict:
     }
 
 
+@app.get("/v1/observability/status")
+def observability_status() -> dict:
+    """Compose-plane honesty — meter vs enforce separation."""
+    backend = os.getenv("AGENTFINOPS_DB_BACKEND", "sqlite").lower()
+    return {
+        "source_of_truth": f"Usage/budget store ({backend}) — metering only, not policy enforcement",
+        "exporters": [
+            {
+                "name": "OpsMetrics",
+                "state": "live",
+                "detail": "GET /v1/ops/metrics — event counts + store backend + enforcement=caller_owned",
+            }
+        ],
+        "planes": {
+            "store_backend": backend,
+            "auth_required_mutations": bool(os.getenv("AGENTFINOPS_API_KEY")),
+            "enforcement": "caller_owned",
+            "langfuse": False,
+            "note": "AegisAI kill-switch / AegisLoop refuse own breach enforcement.",
+        },
+        "recommendation": (
+            "Record usage here; enforce budgets in the caller gateway/AgentOps path. "
+            "Do not claim FinOps alone stops spend."
+        ),
+    }
+
+
 @app.get("/health")
 def health() -> dict:
     backend = os.getenv("AGENTFINOPS_DB_BACKEND", "sqlite").lower()
