@@ -63,6 +63,7 @@ class WorkflowOutcomeRequest(BaseModel):
 @app.get("/v1/ops/metrics")
 def ops_metrics() -> dict:
     agg = store.aggregate_ops() if hasattr(store, "aggregate_ops") else {"usage_events": 0, "total_cost_usd": 0.0, "budgets_configured": 0}
+    backend = os.getenv("AGENTFINOPS_DB_BACKEND", "sqlite").lower()
     return {
         "service": "agent-finops",
         "collected_at": datetime.now(timezone.utc).isoformat(),
@@ -71,13 +72,25 @@ def ops_metrics() -> dict:
         "p95_latency_ms": None,
         "active_entities": agg.get("budgets_configured", 0),
         "slo": {"target_uptime_pct": 99.5, "success_target_pct": 95.0},
-        "extra": agg,
+        "extra": {
+            **agg,
+            "store_backend": backend,
+            "auth_required_mutations": bool(os.getenv("AGENTFINOPS_API_KEY")),
+            "enforcement": "caller_owned",
+            "note": "FinOps meters cost; AegisAI/AegisLoop enforce breach (kill-switch / refuse).",
+        },
     }
 
 
 @app.get("/health")
 def health() -> dict:
-    return {"status": "ok", "service": "agent-finops"}
+    backend = os.getenv("AGENTFINOPS_DB_BACKEND", "sqlite").lower()
+    return {
+        "status": "ok",
+        "service": "agent-finops",
+        "store_backend": backend,
+        "auth_required_mutations": bool(os.getenv("AGENTFINOPS_API_KEY")),
+    }
 
 
 @app.post("/v1/usage", dependencies=[Depends(_require_api_key)])
