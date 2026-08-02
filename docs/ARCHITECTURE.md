@@ -67,6 +67,15 @@ The center column replays metering steps built only from live API response field
 latency trace in the API; phases are the real call sequence (set budget → price →
 record → compare → breach), not invented timings.
 
+## Observability (meter ≠ enforce)
+
+I’d rather say this twice than once in a panel: FinOps **meters**. AegisAI / AegisLoop **enforce** when a budget breaks.
+
+| Surface | Path |
+|---------|------|
+| Ops metrics | `GET /v1/ops/metrics` — store backend + `enforcement=caller_owned` |
+| Compose honesty | `GET /v1/observability/status` — same story, recommendation included |
+
 ## Related repos
 
 | Layer | Repo |
