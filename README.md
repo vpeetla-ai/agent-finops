@@ -6,9 +6,9 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Portfolio](https://img.shields.io/badge/🌐_venkat--ai.com-Portfolio-5eead4?style=flat-square)](https://venkat-ai.com/work)
 
-**Real, enforced cost governance for AI agent fleets — usage metering, budgets, and breach signals as a shared service, not a seeded dashboard.**
+**Job of the system:** turn real provider token counts into dollars, budgets, and breach signals other agent platforms call — then *they* kill-switch or refuse dispatch. Not a seeded cost chart.
 
-> Two other repos in this portfolio (`aegisai-enterprise-agent-platform`, `aegisloop-agentops-workbench`) shipped a "FinOps" module that computed cost from fabricated seed data, never real usage. This is the fix — as a standalone service, not duplicated logic in each.
+> AegisAI and AegisLoop once shipped "FinOps" on fabricated numbers. This service is the shared ledger fix.
 
 **Live demo (UI):** [agent-finops.vercel.app](https://agent-finops.vercel.app) · **API:** [agent-finops-api.onrender.com](https://agent-finops-api.onrender.com)
 
@@ -16,13 +16,13 @@
 
 ## Why this exists
 
-Enterprise AI cost governance keeps failing the same way in 2026: teams build a dashboard *after* production traffic arrives, wire it to guessed or seeded numbers, and call it FinOps. Real governance needs three things in place *before* traffic arrives:
+Cost governance fails the same way: build a dashboard after traffic arrives, wire guessed or seeded numbers, call it FinOps. Before traffic I'd want:
 
-1. **Real metering** — actual token counts from the provider's own response, not a character-count guess
-2. **A budget, per agent or per tenant** — not just a number to look at
-3. **Enforcement** — a budget breach has to *do* something (pause the agent, block the next call), not just render red
+1. **Real metering** — provider `usage` fields, not character-count guesses
+2. **A budget per agent or tenant** — not only a number to look at
+3. **A breach signal consumers enforce** — pause/kill/refuse; this service doesn't reach into their control plane
 
-This service is the shared ledger + budget check other agent platforms call into, instead of re-implementing pricing tables and cost math per repo.
+Free-tier Demo is honest about wake latency; we don't invent 99.x% availability claims for Render sleep.
 
 ## 60-second overview
 
@@ -47,7 +47,7 @@ FinOps tells the truth about cost. Each consumer still owns what happens when a 
 | Real cost calculation | ✅ | `pricing.py` — real per-model $/1M-token table, non-zero fallback for unknown models |
 | Usage ledger | ✅ | SQLite (dev) / Postgres (prod via `AGENTFINOPS_DB_BACKEND=postgres`) |
 | Budget set + breach detection | ✅ | `PUT /v1/budget/{scope_type}/{scope_value}`, checked on every `POST /v1/usage` |
-| Glass-box workbench UX | ✅ | 3-column: architecture + live SLOs · budget→usage→breach step replay from real API fields · product |
+| Glass-box workbench UX | ✅ | 3-column: architecture + `/health` fields · budget→usage→breach replay from real API fields · product |
 | API-key gate on mutating routes | ✅ | Set `AGENTFINOPS_API_KEY` — unset in dev/demo |
 | Python SDK (`agent_finops_client`) | ✅ | Graceful local fallback when no service URL configured |
 | Consumers wired (AegisAI, AegisLoop) | ✅ | Both call this service for real per-node/per-mission metering and halt real dispatch on breach — see [ai-architecture-portfolio ADR-011/012](https://github.com/vpeetla-ai/ai-architecture-portfolio/blob/main/adr/ADR-012-aegisloop-finops-metering.md) |
