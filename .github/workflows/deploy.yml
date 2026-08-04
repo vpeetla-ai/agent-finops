@@ -16,8 +16,12 @@ permissions:
   contents: read
 
 jobs:
+  ci-gate:
+    uses: ./.github/workflows/ci.yml
+
   deploy-ui:
     name: Deploy UI (Vercel)
+    needs: ci-gate
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
     steps:
