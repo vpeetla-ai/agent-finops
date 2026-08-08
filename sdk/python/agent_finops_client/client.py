@@ -97,6 +97,8 @@ class FinOpsClient:
         hitl_approved: bool = True,
         budget_ok: bool = True,
         total_cost_usd: float = 0.0,
+        human_review_minutes: float = 0.0,
+        verified_outcome: str = "unverified",
     ) -> dict:
         """ADR-029: record compliant-success bit for cost-per-compliant-outcome KPI."""
         payload = {
@@ -108,6 +110,8 @@ class FinOpsClient:
             "hitl_approved": hitl_approved,
             "budget_ok": budget_ok,
             "total_cost_usd": total_cost_usd,
+            "human_review_minutes": human_review_minutes,
+            "verified_outcome": verified_outcome,
         }
         if not self.base_url:
             compliant = (
@@ -135,6 +139,11 @@ class FinOpsClient:
                 "compliant_outcomes": 0,
                 "total_cost_usd": 0.0,
                 "cost_per_compliant_outcome": None,
+                "verified_outcomes": 0,
+                "cost_per_verified_outcome": None,
+                "total_human_review_minutes": 0.0,
+                "estimated_human_cost_usd": 0.0,
+                "fully_loaded_cost_per_verified": None,
                 "offline": True,
             }
         params = {"tenant_id": tenant_id} if tenant_id else None

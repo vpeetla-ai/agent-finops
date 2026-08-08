@@ -58,6 +58,8 @@ class WorkflowOutcomeRequest(BaseModel):
     hitl_approved: bool = True
     budget_ok: bool = True
     total_cost_usd: float = 0.0
+    human_review_minutes: float = 0.0
+    verified_outcome: str = "unverified"
 
 
 @app.get("/v1/ops/metrics")
@@ -166,6 +168,14 @@ def set_budget(scope_type: str, scope_value: str, body: SetBudgetRequest) -> dic
 @app.post("/v1/outcomes", dependencies=[Depends(_require_api_key)])
 def record_outcome(body: WorkflowOutcomeRequest) -> dict:
     """Record compliant-success bit for cost-per-compliant-outcome KPI (ADR-029)."""
+    from agent_finops.store import VERIFIED_OUTCOME_VALUES
+
+    verified = (body.verified_outcome or "unverified").strip().lower()
+    if verified not in VERIFIED_OUTCOME_VALUES:
+        raise HTTPException(
+            status_code=422,
+            detail=f"verified_outcome must be one of {sorted(VERIFIED_OUTCOME_VALUES)}",
+        )
     compliant = (
         body.eval_pass
         and not body.policy_deny
@@ -182,6 +192,8 @@ def record_outcome(body: WorkflowOutcomeRequest) -> dict:
         "hitl_approved": body.hitl_approved,
         "budget_ok": body.budget_ok,
         "total_cost_usd": body.total_cost_usd,
+        "human_review_minutes": max(0.0, float(body.human_review_minutes or 0)),
+        "verified_outcome": verified,
         "recorded_at": datetime.now(timezone.utc).isoformat(),
     }
     record_workflow_outcome(store, row)

@@ -51,7 +51,8 @@ FinOps tells the truth about cost. Each consumer still owns what happens when a 
 | API-key gate on mutating routes | ✅ | Set `AGENTFINOPS_API_KEY` — unset in dev/demo |
 | Python SDK (`agent_finops_client`) | ✅ | Graceful local fallback when no service URL configured |
 | Consumers wired (AegisAI, AegisLoop) | ✅ | Both call this service for real per-node/per-mission metering and halt real dispatch on breach — see [ai-architecture-portfolio ADR-011/012](https://github.com/vpeetla-ai/ai-architecture-portfolio/blob/main/adr/ADR-012-aegisloop-finops-metering.md) |
-| Cost per compliant outcome (ADR-029) | ✅ | `POST /v1/outcomes` · `GET /v1/kpi/cost-per-compliant-outcome` · SDK helpers; AegisAI Control Room reads live when `AGENTFINOPS_API_URL` set |
+| Cost per compliant outcome (ADR-029) | ✅ | `POST /v1/outcomes` with `verified_outcome` + `human_review_minutes`; KPI returns cost/verified + fully-loaded human cost; SDK helpers; AegisAI Control Room reads live when `AGENTFINOPS_API_URL` set |
+| Golden eval CI gate | ✅ | `agent_finops.outcome_invariant_v1` via `golden-eval-registry` |
 | Public ops metrics honesty | ✅ | `GET /v1/ops/metrics` exposes store backend + mutation auth posture; enforcement stays caller-owned |
 | Observability status | ✅ | `GET /v1/observability/status` — meter vs enforce separation (caller-owned) |
 | Cross-repo budget totals (e.g. per-tenant across all platforms) | 🟡 | Schema supports it (`scope_type="tenant"`); no consumer sets tenant-scoped budgets yet |
@@ -122,8 +123,12 @@ MIT License
 
 ```bash
 POST /v1/outcomes
+# optional fields: verified_outcome=verified|rejected|unverified|partial
+#                  human_review_minutes=<float>
 GET  /v1/kpi/cost-per-compliant-outcome?tenant_id=omniforge
 ```
 
 SDK: `FinOpsClient.record_outcome(...)` / `get_cost_per_compliant_outcome(...)`.
 Compliant = eval pass + no policy deny + HITL approved when required + budget OK.
+KPI also returns `verified_outcomes`, `cost_per_verified_outcome`, human-minute totals, and
+`fully_loaded_cost_per_verified` (token cost + `AGENTFINOPS_HUMAN_MINUTE_USD`, default $1.50/min).

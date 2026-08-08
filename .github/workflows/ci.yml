@@ -42,11 +42,20 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: vpeetla-ai/golden-eval-registry
+          path: golden-eval-registry
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - run: pip install -e ".[dev]"
-      - run: pytest -q
+      - run: |
+          pip install -e ".[dev]"
+          pip install -e ./golden-eval-registry
+      - name: Pytest (includes golden eval gate)
+        env:
+          GOLDEN_EVAL_REGISTRY_PATH: ${{ github.workspace }}/golden-eval-registry
+        run: pytest -q
 
   ci-ok:
     name: CI gate

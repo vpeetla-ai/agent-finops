@@ -41,10 +41,33 @@ CREATE TABLE IF NOT EXISTS workflow_outcomes (
     hitl_approved INTEGER NOT NULL,
     budget_ok INTEGER NOT NULL,
     total_cost_usd REAL NOT NULL DEFAULT 0,
+    human_review_minutes REAL NOT NULL DEFAULT 0,
+    verified_outcome TEXT NOT NULL DEFAULT 'unverified',
     recorded_at TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS ix_outcomes_tenant ON workflow_outcomes (tenant_id);
 """
+
+VERIFIED_OUTCOME_VALUES = frozenset({"verified", "rejected", "unverified", "partial"})
+DEFAULT_HUMAN_MINUTE_USD = 1.5
+
+
+def _migrate_outcome_columns(conn: sqlite3.Connection) -> None:
+    cols = {row[1] for row in conn.execute("PRAGMA table_info(workflow_outcomes)").fetchall()}
+    if "human_review_minutes" not in cols:
+        conn.execute(
+            "ALTER TABLE workflow_outcomes ADD COLUMN human_review_minutes REAL NOT NULL DEFAULT 0"
+        )
+    if "verified_outcome" not in cols:
+        conn.execute(
+            "ALTER TABLE workflow_outcomes ADD COLUMN verified_outcome TEXT NOT NULL DEFAULT 'unverified'"
+        )
+
+
+_OUTCOME_PG_MIGRATIONS = (
+    "ALTER TABLE workflow_outcomes ADD COLUMN IF NOT EXISTS human_review_minutes DOUBLE PRECISION NOT NULL DEFAULT 0",
+    "ALTER TABLE workflow_outcomes ADD COLUMN IF NOT EXISTS verified_outcome TEXT NOT NULL DEFAULT 'unverified'",
+)
 
 
 class FinOpsStore(Protocol):
@@ -64,6 +87,7 @@ class SQLiteFinOpsStore:
         # (a fresh connection would otherwise get a fresh, empty in-memory db).
         self._conn = sqlite3.connect(self._db_path, check_same_thread=False)
         self._conn.executescript(_SCHEMA)
+        _migrate_outcome_columns(self._conn)
         self._conn.commit()
 
     def record_usage(self, event: UsageEvent) -> UsageResult:
@@ -147,6 +171,8 @@ class PostgresFinOpsStore:
         pg_schema = _SCHEMA.replace("INTEGER PRIMARY KEY AUTOINCREMENT", "SERIAL PRIMARY KEY")
         with self._psycopg.connect(self.database_url) as conn:
             conn.execute(pg_schema)
+            for stmt in _OUTCOME_PG_MIGRATIONS:
+                conn.execute(stmt)
             conn.commit()
 
     def record_usage(self, event: UsageEvent) -> UsageResult:
@@ -238,8 +264,9 @@ def build_store() -> FinOpsStore:
 _OUTCOME_INSERT_SQLITE = """
 INSERT INTO workflow_outcomes
   (workflow_id, tenant_id, compliant_success, eval_pass, policy_deny,
-   hitl_required, hitl_approved, budget_ok, total_cost_usd, recorded_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+   hitl_required, hitl_approved, budget_ok, total_cost_usd,
+   human_review_minutes, verified_outcome, recorded_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 ON CONFLICT(workflow_id) DO UPDATE SET
   compliant_success=excluded.compliant_success,
   eval_pass=excluded.eval_pass,
@@ -248,14 +275,17 @@ ON CONFLICT(workflow_id) DO UPDATE SET
   hitl_approved=excluded.hitl_approved,
   budget_ok=excluded.budget_ok,
   total_cost_usd=excluded.total_cost_usd,
+  human_review_minutes=excluded.human_review_minutes,
+  verified_outcome=excluded.verified_outcome,
   recorded_at=excluded.recorded_at
 """
 
 _OUTCOME_INSERT_PG = """
 INSERT INTO workflow_outcomes
   (workflow_id, tenant_id, compliant_success, eval_pass, policy_deny,
-   hitl_required, hitl_approved, budget_ok, total_cost_usd, recorded_at)
-VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+   hitl_required, hitl_approved, budget_ok, total_cost_usd,
+   human_review_minutes, verified_outcome, recorded_at)
+VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
 ON CONFLICT(workflow_id) DO UPDATE SET
   compliant_success=EXCLUDED.compliant_success,
   eval_pass=EXCLUDED.eval_pass,
@@ -264,11 +294,18 @@ ON CONFLICT(workflow_id) DO UPDATE SET
   hitl_approved=EXCLUDED.hitl_approved,
   budget_ok=EXCLUDED.budget_ok,
   total_cost_usd=EXCLUDED.total_cost_usd,
+  human_review_minutes=EXCLUDED.human_review_minutes,
+  verified_outcome=EXCLUDED.verified_outcome,
   recorded_at=EXCLUDED.recorded_at
 """
 
 
 def record_workflow_outcome(store, row: dict) -> dict:
+    verified = str(row.get("verified_outcome") or "unverified")
+    if verified not in VERIFIED_OUTCOME_VALUES:
+        raise ValueError(
+            f"verified_outcome must be one of {sorted(VERIFIED_OUTCOME_VALUES)}; got {verified!r}"
+        )
     params = (
         row["workflow_id"],
         row["tenant_id"],
@@ -279,6 +316,8 @@ def record_workflow_outcome(store, row: dict) -> dict:
         int(row["hitl_approved"]),
         int(row["budget_ok"]),
         float(row.get("total_cost_usd") or 0),
+        float(row.get("human_review_minutes") or 0),
+        verified,
         row["recorded_at"],
     )
     if hasattr(store, "_conn"):
@@ -294,48 +333,88 @@ def record_workflow_outcome(store, row: dict) -> dict:
 
 
 def cost_per_compliant_outcome(store, tenant_id: str | None = None) -> dict:
+    human_rate = float(os.getenv("AGENTFINOPS_HUMAN_MINUTE_USD", str(DEFAULT_HUMAN_MINUTE_USD)))
     empty = {
         "tenant_id": tenant_id,
         "compliant_outcomes": 0,
         "total_cost_usd": 0.0,
         "cost_per_compliant_outcome": None,
+        "verified_outcomes": 0,
+        "cost_per_verified_outcome": None,
+        "total_human_review_minutes": 0.0,
+        "estimated_human_cost_usd": 0.0,
+        "fully_loaded_cost_per_verified": None,
+        "verified_outcome_enum": sorted(VERIFIED_OUTCOME_VALUES),
+        "human_minute_usd": human_rate,
     }
+
+    def _pack(compliant: int, verified: int, token_cost: float, human_minutes: float) -> dict:
+        human_cost = round(human_minutes * human_rate, 6)
+        return {
+            "tenant_id": tenant_id,
+            "compliant_outcomes": compliant,
+            "total_cost_usd": token_cost,
+            "cost_per_compliant_outcome": (token_cost / compliant) if compliant else None,
+            "verified_outcomes": verified,
+            "cost_per_verified_outcome": (token_cost / verified) if verified else None,
+            "total_human_review_minutes": human_minutes,
+            "estimated_human_cost_usd": human_cost,
+            "fully_loaded_cost_per_verified": (
+                (token_cost + human_cost) / verified if verified else None
+            ),
+            "verified_outcome_enum": sorted(VERIFIED_OUTCOME_VALUES),
+            "human_minute_usd": human_rate,
+        }
+
     if hasattr(store, "_conn"):
         if tenant_id:
             cur = store._conn.execute(
-                """SELECT COUNT(*), COALESCE(SUM(total_cost_usd), 0)
-                   FROM workflow_outcomes
-                   WHERE tenant_id = ? AND compliant_success = 1""",
+                """SELECT
+                     SUM(CASE WHEN compliant_success = 1 THEN 1 ELSE 0 END),
+                     SUM(CASE WHEN verified_outcome = 'verified' THEN 1 ELSE 0 END),
+                     COALESCE(SUM(CASE WHEN compliant_success = 1 THEN total_cost_usd ELSE 0 END), 0),
+                     COALESCE(SUM(human_review_minutes), 0)
+                   FROM workflow_outcomes WHERE tenant_id = ?""",
                 (tenant_id,),
             )
         else:
             cur = store._conn.execute(
-                """SELECT COUNT(*), COALESCE(SUM(total_cost_usd), 0)
-                   FROM workflow_outcomes WHERE compliant_success = 1"""
+                """SELECT
+                     SUM(CASE WHEN compliant_success = 1 THEN 1 ELSE 0 END),
+                     SUM(CASE WHEN verified_outcome = 'verified' THEN 1 ELSE 0 END),
+                     COALESCE(SUM(CASE WHEN compliant_success = 1 THEN total_cost_usd ELSE 0 END), 0),
+                     COALESCE(SUM(human_review_minutes), 0)
+                   FROM workflow_outcomes"""
             )
-        count, cost = cur.fetchone()
+        compliant, verified, cost, minutes = cur.fetchone()
     elif hasattr(store, "database_url"):
         with store._psycopg.connect(store.database_url) as conn:
             if tenant_id:
                 row = conn.execute(
-                    """SELECT COUNT(*), COALESCE(SUM(total_cost_usd), 0)
-                       FROM workflow_outcomes
-                       WHERE tenant_id = %s AND compliant_success = 1""",
+                    """SELECT
+                         SUM(CASE WHEN compliant_success = 1 THEN 1 ELSE 0 END),
+                         SUM(CASE WHEN verified_outcome = 'verified' THEN 1 ELSE 0 END),
+                         COALESCE(SUM(CASE WHEN compliant_success = 1 THEN total_cost_usd ELSE 0 END), 0),
+                         COALESCE(SUM(human_review_minutes), 0)
+                       FROM workflow_outcomes WHERE tenant_id = %s""",
                     (tenant_id,),
                 ).fetchone()
             else:
                 row = conn.execute(
-                    """SELECT COUNT(*), COALESCE(SUM(total_cost_usd), 0)
-                       FROM workflow_outcomes WHERE compliant_success = 1"""
+                    """SELECT
+                         SUM(CASE WHEN compliant_success = 1 THEN 1 ELSE 0 END),
+                         SUM(CASE WHEN verified_outcome = 'verified' THEN 1 ELSE 0 END),
+                         COALESCE(SUM(CASE WHEN compliant_success = 1 THEN total_cost_usd ELSE 0 END), 0),
+                         COALESCE(SUM(human_review_minutes), 0)
+                       FROM workflow_outcomes"""
                 ).fetchone()
-        count, cost = row
+        compliant, verified, cost, minutes = row
     else:
         return empty
-    count = int(count or 0)
-    cost = float(cost or 0)
-    return {
-        "tenant_id": tenant_id,
-        "compliant_outcomes": count,
-        "total_cost_usd": cost,
-        "cost_per_compliant_outcome": (cost / count) if count else None,
-    }
+
+    return _pack(
+        int(compliant or 0),
+        int(verified or 0),
+        float(cost or 0),
+        float(minutes or 0),
+    )
