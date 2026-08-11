@@ -135,6 +135,21 @@ def record_usage(body: RecordUsageRequest) -> dict:
         cost_usd=cost_usd,
     )
     result = store.record_usage(event)
+    # Optional commercial mirror (test mode) — never blocks metering.
+    if body.scope_type == "tenant" and os.getenv("STRIPE_METER_MIRROR", "false").lower() in {
+        "1",
+        "true",
+        "yes",
+    }:
+        try:
+            from agent_finops.stripe_meters import get_stripe_meter_reporter
+
+            get_stripe_meter_reporter().record_usage_meter(
+                tenant_id=body.scope_value,
+                value=round(result.cost_usd * 100_000),  # millicents
+            )
+        except Exception:
+            pass
     return {
         "scope_type": result.scope_type,
         "scope_value": result.scope_value,
@@ -207,3 +222,29 @@ def kpi_cost_per_compliant_outcome(tenant_id: str | None = None) -> dict:
         "kpi": "cost_per_compliant_outcome",
         **cost_per_compliant_outcome(store, tenant_id),
     }
+
+
+class StripeMeterRequest(BaseModel):
+    tenant_id: str
+    value: float
+    event_name: str | None = None
+
+
+@app.post("/v1/billing/stripe/meter", dependencies=[Depends(_require_api_key)])
+def stripe_meter_event(body: StripeMeterRequest) -> dict:
+    """Mirror FinOps usage into Stripe Billing Meters (test mode only)."""
+    from agent_finops.stripe_meters import get_stripe_meter_reporter
+
+    reporter = get_stripe_meter_reporter()
+    return reporter.record_usage_meter(
+        tenant_id=body.tenant_id,
+        value=body.value,
+        event_name=body.event_name,
+    )
+
+
+@app.get("/v1/billing/stripe/invoice-preview/{tenant_id}")
+def stripe_invoice_preview(tenant_id: str) -> dict:
+    from agent_finops.stripe_meters import get_stripe_meter_reporter
+
+    return get_stripe_meter_reporter().invoice_preview(tenant_id)
