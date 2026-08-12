@@ -55,7 +55,8 @@ FinOps tells the truth about cost. Each consumer still owns what happens when a 
 | Golden eval CI gate | ✅ | `agent_finops.outcome_invariant_v1` via `golden-eval-registry` |
 | Public ops metrics honesty | ✅ | `GET /v1/ops/metrics` exposes store backend + mutation auth posture; enforcement stays caller-owned |
 | Observability status | ✅ | `GET /v1/observability/status` — meter vs enforce separation (caller-owned) |
-| Cross-repo budget totals (e.g. per-tenant across all platforms) | 🟡 | Schema supports it (`scope_type="tenant"`); no consumer sets tenant-scoped budgets yet |
+| Cross-repo budget totals (e.g. per-tenant across all platforms) | ✅ | Schema + APIs for `scope_type=tenant`; AegisAI Acme embed meters tenant scope and freezes one tenant on breach ([ADR-032](https://github.com/vpeetla-ai/ai-architecture-portfolio/blob/main/adr/ADR-032-acme-support-agent-embed.md)) |
+| Stripe test-mode meters + invoice preview | ✅ | `POST /v1/billing/stripe/meter` · `GET /v1/billing/stripe/invoice-preview/{tenant}` — **test mode only** (`sk_live` refused); optional `STRIPE_METER_MIRROR` |
 | Multi-provider pricing beyond OpenAI/Gemini/local | ❌ | Add to `pricing.RATES` as new providers get wired |
 | Real GCP deploy path (Cloud Run + Cloud SQL) | ✅ | `deploy/terraform/gcp/` — verified with a real `terraform apply`/`destroy` cycle against a live GCP project (real budget breach detected against real Cloud SQL, then torn down). See [ADR-0002](docs/adr/0002-paas-vs-iac-deploy-tradeoffs.md) |
 
